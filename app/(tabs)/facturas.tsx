@@ -16,8 +16,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { InvoiceCard } from "../../components/InvoiceCard";
 import { InvoiceFormModal } from "../../components/InvoiceFormModal";
 import type { Activity, Client, Invoice, InvoiceStatus } from "../../models/types";
+import { generateInvoicePDF } from "../../services/pdf";
 import { getItem, getItemNullable, setItem } from "../../services/storage";
 import { colors } from "../../themes/colors";
+import { openWhatsApp } from "../../utils/whatsapp";
 
 const KEY_CLIENTS = "clients_v1";
 const KEY_INVOICES = "invoices_v1";
@@ -339,6 +341,14 @@ export default function FacturasScreen() {
                                 onEdit={() => openEdit(inv)}
                                 onDelete={() => deleteInvoice(inv)}
                                 onMarkPaid={() => markPaid(inv)}
+                                onShare={() => {
+                                    if (c) generateInvoicePDF(inv, c);
+                                }}
+                                onWhatsApp={() => {
+                                    if (!c) return;
+                                    const msg = `Hola ${c.name}, le escribimos de PagoFijoHN para recordarle su factura ${inv.id} por $${inv.amount} que vence el ${inv.due}. Gracias.`;
+                                    openWhatsApp(c.phone, msg);
+                                }}
                             />
                         );
                     })}

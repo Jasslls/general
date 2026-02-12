@@ -1,3 +1,4 @@
+import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { InvoiceStatus } from "../models/types";
@@ -19,6 +20,8 @@ export function InvoiceCard({
     onEdit,
     onDelete,
     onMarkPaid,
+    onShare,
+    onWhatsApp,
 }: {
     id: string;
     clientName: string;
@@ -29,6 +32,8 @@ export function InvoiceCard({
     onEdit?: () => void;
     onDelete?: () => void;
     onMarkPaid?: () => void;
+    onShare?: () => void;
+    onWhatsApp?: () => void;
 }) {
     const b = badgeStyle(status);
     const canMarkPaid = status !== "Cobrada";
@@ -42,6 +47,14 @@ export function InvoiceCard({
                 </View>
 
                 <View style={styles.actions}>
+                    {onWhatsApp && (
+                        <Pressable onPress={onWhatsApp} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                            <FontAwesome name="whatsapp" size={20} color={colors.success} />
+                        </Pressable>
+                    )}
+                    <Pressable onPress={onShare} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                        <Text style={styles.actionText}>📤</Text>
+                    </Pressable>
                     <Pressable onPress={onEdit} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
                         <Text style={styles.actionText}>✎</Text>
                     </Pressable>

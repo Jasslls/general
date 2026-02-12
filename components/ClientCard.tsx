@@ -1,3 +1,4 @@
+import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../themes/colors";
@@ -10,9 +11,10 @@ type Props = {
     rfc: string;
     onEdit?: () => void;
     onDelete?: () => void;
+    onWhatsApp?: () => void;
 };
 
-export function ClientCard({ name, company, email, phone, rfc, onEdit, onDelete }: Props) {
+export function ClientCard({ name, company, email, phone, rfc, onEdit, onDelete, onWhatsApp }: Props) {
     return (
         <View style={styles.card}>
             <View style={styles.topRow}>
@@ -21,6 +23,11 @@ export function ClientCard({ name, company, email, phone, rfc, onEdit, onDelete 
                 </View>
 
                 <View style={styles.actions}>
+                    {onWhatsApp && (
+                        <Pressable onPress={onWhatsApp} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                            <FontAwesome name="whatsapp" size={20} color={colors.success} />
+                        </Pressable>
+                    )}
                     <Pressable onPress={onEdit} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
                         <Text style={styles.actionText}>✎</Text>
                     </Pressable>

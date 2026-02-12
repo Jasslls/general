@@ -17,6 +17,7 @@ import { ClientFormModal } from "../../components/ClientFormModal";
 import type { Invoice } from "../../models/types";
 import { getItemNullable, setItem } from "../../services/storage";
 import { colors } from "../../themes/colors";
+import { openWhatsApp } from "../../utils/whatsapp";
 
 type Client = {
     id: string;
@@ -201,6 +202,9 @@ export default function ClientesScreen() {
                                 rfc={c.rfc}
                                 onEdit={() => openEdit(c)}
                                 onDelete={() => void deleteClient(c)}
+                                onWhatsApp={() => {
+                                    openWhatsApp(c.phone, `Hola ${c.name}, te escribo de PagoFijoHN...`);
+                                }}
                             />
                         </View>
                     ))}
