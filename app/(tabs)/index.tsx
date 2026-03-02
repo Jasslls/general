@@ -1,7 +1,10 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useAuth } from "../_layout";
 
 import { CashFlowBarCard, InvoiceStatusPieCard } from "../../components/Charts";
 import { OverduePaymentsCard, UpcomingPaymentsCard } from "../../components/DashboardLists";
@@ -47,6 +50,7 @@ function normalizeOverdue(invoices: Invoice[], todayKey: string) {
 }
 
 export default function DashboardScreen() {
+  const { signOut } = useAuth();
   const { width } = useWindowDimensions();
   const isWide = width >= 900; // en web / tablet grande: 2 columnas fijas
   const colStyle = isWide ? styles.col2 : styles.col1;
@@ -112,8 +116,15 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <Text style={styles.h1}>Estadísticas</Text>
-        <Text style={styles.sub}>Resumen de tu cartera y cobros</Text>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.h1}>Estadísticas</Text>
+            <Text style={styles.sub}>Resumen de tu cartera y cobros</Text>
+          </View>
+          <Pressable onPress={signOut} style={styles.logoutBtn}>
+            <Ionicons name="log-out-outline" size={22} color={colors.danger} />
+          </Pressable>
+        </View>
 
         {/* KPIs */}
         <View style={styles.kpiRow}>
@@ -191,4 +202,7 @@ const styles = StyleSheet.create({
 
   sectionHeader: { marginTop: 16, marginBottom: 8 },
   sectionTitle: { fontSize: 16, fontWeight: "800", color: colors.text },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  logoutBtn: { padding: 8, borderRadius: 12, backgroundColor: "rgba(220, 38, 38, 0.05)" },
 });
+
