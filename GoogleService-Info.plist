@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>575779505449-48924ju5hjqpocuisj71l4u7crndlelu.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.575779505449-48924ju5hjqpocuisj71l4u7crndlelu</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>575779505449-ov75p3nu9frkdmnc6c59of92qhif596n.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAw55id1ttZf6y77CERUFwhJ7jkD2Rupa8</string>
+	<key>GCM_SENDER_ID</key>
+	<string>575779505449</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.jassll.pagifijo</string>
+	<key>PROJECT_ID</key>
+	<string>pagofijo-64c8f</string>
+	<key>STORAGE_BUCKET</key>
+	<string>pagofijo-64c8f.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:575779505449:ios:4ef114c6cc9c667153a338</string>
+</dict>
+</plist>

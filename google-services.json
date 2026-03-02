@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "575779505449",
+    "project_id": "pagofijo-64c8f",
+    "storage_bucket": "pagofijo-64c8f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:575779505449:android:a7c0dd8ed9f8ca1d53a338",
+        "android_client_info": {
+          "package_name": "com.jassll.pagifijo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "575779505449-ov75p3nu9frkdmnc6c59of92qhif596n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jassll.pagifijo",
+            "certificate_hash": "2cdcc5f70a3c63401f2d5b49e9e4d7728c2a004f"
+          }
+        },
+        {
+          "client_id": "575779505449-7m3bn6mt04bp7qf7eq9m7gscluonslve.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfYNqy45GuABeFQjBVHMbFxgKP-DtLLRM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "575779505449-7m3bn6mt04bp7qf7eq9m7gscluonslve.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "575779505449-48924ju5hjqpocuisj71l4u7crndlelu.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.jassll.pagifijo"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
