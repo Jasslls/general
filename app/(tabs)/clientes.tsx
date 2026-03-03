@@ -14,61 +14,51 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ClientCard } from "../../components/ClientCard";
 import { ClientFormModal } from "../../components/ClientFormModal";
-import type { Invoice } from "../../models/types";
+import type { Client } from "../../models/types";
+import {
+    addClient,
+    deleteClient,
+    deleteInvoice,
+    getClients,
+    getInvoicesByClient,
+    updateClient
+} from "../../services/firestore";
 import { getItemNullable, setItem } from "../../services/storage";
 import { colors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
+import { useAuth } from "../_layout";
 
-type Client = {
-    id: string;
-    name: string;
-    company: string;
-    email: string;
-    phone: string;
-    rfc: string;
-};
-
-const KEY_CLIENTS = "clients_v1";
-const KEY_INVOICES = "invoices_v1";
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
 
-const SEED: Client[] = [
-    { id: "1", name: "María González", company: "Constructora García S.A.", email: "maria@empresa1.com", phone: "+52 55 1234 5678", rfc: "CGS980101ABC" },
-    { id: "2", name: "Carlos Ramírez", company: "Distribuidora del Norte", email: "carlos@empresa2.com", phone: "+52 55 9876 5432", rfc: "DDN950315XYZ" },
-    { id: "3", name: "Ana Martínez", company: "Servicios Integrales SA", email: "ana@empresa3.com", phone: "+52 33 5555 1234", rfc: "SIS000512DEF" },
-    { id: "4", name: "Roberto Sánchez", company: "Tech Solutions México", email: "roberto@empresa4.com", phone: "+52 81 4444 9999", rfc: "TSM100820GHI" },
-];
-
-function uid() {
-    return Math.random().toString(16).slice(2) + Date.now().toString(16);
-}
-
 export default function ClientesScreen() {
+    const { user } = useAuth();
+    const uid = user?.id;
+
     const [q, setQ] = useState("");
     const [clients, setClients] = useState<Client[]>([]);
+    const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Client | null>(null);
 
     // 🔒 Esto evita que se abra el modal sin intención.
     const [shouldOpenNewFromIntent, setShouldOpenNewFromIntent] = useState(false);
 
-    // ✅ load (seed solo si la key NO existe)
-    useEffect(() => {
-        (async () => {
-            const saved = await getItemNullable<Client[]>(KEY_CLIENTS);
-            if (saved === null) {
-                setClients(SEED);
-                await setItem(KEY_CLIENTS, SEED);
-            } else {
-                setClients(saved); // puede ser []
-            }
-        })();
-    }, []);
+    const loadClients = async () => {
+        if (!uid) return;
+        setLoading(true);
+        try {
+            const data = await getClients(uid);
+            setClients(data);
+        } catch (error) {
+            console.error("Error loading clients:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    // ✅ persistir incluso si queda vacío []
     useEffect(() => {
-        setItem(KEY_CLIENTS, clients);
-    }, [clients]);
+        loadClients();
+    }, [uid]);
 
     // ✅ SOLO si vienes desde "Nueva factura sin clientes"
     useFocusEffect(
@@ -108,61 +98,84 @@ export default function ClientesScreen() {
         setModalOpen(true);
     }
 
-    function saveClient(input: { name: string; company: string; email: string; phone: string; rfc: string }) {
+    async function saveClient(input: { name: string; company: string; email: string; phone: string; rfc: string }) {
+        if (!uid) return;
         if (!input.name.trim() || !input.company.trim()) {
             return Alert.alert("Falta info", "Nombre y empresa son obligatorios.");
         }
 
-        if (editing) {
-            setClients((prev) => prev.map((x) => (x.id === editing.id ? { ...x, ...input } : x)));
-        } else {
-            const created: Client = { id: uid(), ...input };
-            setClients((prev) => [created, ...prev]);
+        try {
+            if (editing) {
+                await updateClient(uid, editing.id, input);
+            } else {
+                await addClient(uid, input);
+            }
+            setModalOpen(false);
+            loadClients();
+        } catch (error) {
+            Alert.alert("Error", "No se pudo guardar el cliente.");
         }
     }
 
-    async function deleteClientAndInvoices(clientId: string) {
-        setClients((p) => p.filter((x) => x.id !== clientId));
-
-        const inv = (await getItemNullable<Invoice[]>(KEY_INVOICES)) ?? [];
-        const next = inv.filter((x) => x.clientId !== clientId);
-        await setItem(KEY_INVOICES, next);
+    async function deleteClientWithInvoices(clientId: string) {
+        if (!uid) return;
+        try {
+            const invoices = await getInvoicesByClient(uid, clientId);
+            for (const inv of invoices) {
+                await deleteInvoice(uid, clientId, inv.id);
+            }
+            await deleteClient(uid, clientId);
+            loadClients();
+        } catch (error) {
+            Alert.alert("Error", "No se pudo eliminar el cliente y sus facturas.");
+        }
     }
 
-    async function deleteClient(c: Client) {
-        const inv = (await getItemNullable<Invoice[]>(KEY_INVOICES)) ?? [];
-        const relatedCount = inv.filter((x) => x.clientId === c.id).length;
+    async function handleDelete(c: Client) {
+        if (!uid) return;
+        try {
+            const invoices = await getInvoicesByClient(uid, c.id);
+            const relatedCount = invoices.length;
 
-        if (relatedCount === 0) {
-            if (Platform.OS === "web") {
-                setClients((p) => p.filter((x) => x.id !== c.id));
+            if (relatedCount === 0) {
+                if (Platform.OS === "web") {
+                    await deleteClient(uid, c.id);
+                    loadClients();
+                    return;
+                }
+
+                Alert.alert("Eliminar cliente", `¿Eliminar a ${c.name}?`, [
+                    { text: "Cancelar", style: "cancel" },
+                    {
+                        text: "Eliminar", style: "destructive", onPress: async () => {
+                            await deleteClient(uid, c.id);
+                            loadClients();
+                        }
+                    },
+                ]);
                 return;
             }
 
-            Alert.alert("Eliminar cliente", `¿Eliminar a ${c.name}?`, [
+            const msg = `${c.name} tiene ${relatedCount} factura(s) asociada(s). Si lo eliminas, se borrarán también esas facturas.`;
+
+            if (Platform.OS === "web") {
+                const ok = typeof window !== "undefined" ? window.confirm(msg + "\n\n¿Borrar cliente y sus facturas?") : false;
+                if (!ok) return;
+                await deleteClientWithInvoices(c.id);
+                return;
+            }
+
+            Alert.alert("Cliente con facturas", msg, [
                 { text: "Cancelar", style: "cancel" },
-                { text: "Eliminar", style: "destructive", onPress: () => setClients((p) => p.filter((x) => x.id !== c.id)) },
+                {
+                    text: "Borrar cliente + facturas",
+                    style: "destructive",
+                    onPress: () => void deleteClientWithInvoices(c.id),
+                },
             ]);
-            return;
+        } catch (error) {
+            Alert.alert("Error", "No se pudo obtener información del cliente.");
         }
-
-        const msg = `${c.name} tiene ${relatedCount} factura(s) asociada(s). Si lo eliminas, puedes borrar también esas facturas para evitar datos huérfanos.`;
-
-        if (Platform.OS === "web") {
-            const ok = typeof window !== "undefined" ? window.confirm(msg + "\n\n¿Borrar cliente y sus facturas?") : false;
-            if (!ok) return;
-            await deleteClientAndInvoices(c.id);
-            return;
-        }
-
-        Alert.alert("Cliente con facturas", msg, [
-            { text: "Cancelar", style: "cancel" },
-            {
-                text: "Borrar cliente + facturas",
-                style: "destructive",
-                onPress: () => void deleteClientAndInvoices(c.id),
-            },
-        ]);
     }
 
     return (
@@ -201,7 +214,7 @@ export default function ClientesScreen() {
                                 phone={c.phone}
                                 rfc={c.rfc}
                                 onEdit={() => openEdit(c)}
-                                onDelete={() => void deleteClient(c)}
+                                onDelete={() => void handleDelete(c)}
                                 onWhatsApp={() => {
                                     openWhatsApp(c.phone, `Hola ${c.name}, te escribo de PagoFijoHN...`);
                                 }}

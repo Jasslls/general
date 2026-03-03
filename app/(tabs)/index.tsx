@@ -11,11 +11,8 @@ import { OverduePaymentsCard, UpcomingPaymentsCard } from "../../components/Dash
 import { InvoiceRow } from "../../components/InvoiceRow";
 import { StatCard } from "../../components/StatCard";
 import type { Client, Invoice } from "../../models/types";
-import { getItemNullable } from "../../services/storage";
+import { getAllInvoices, getClients } from "../../services/firestore";
 import { colors } from "../../themes/colors";
-
-const KEY_CLIENTS = "clients_v1";
-const KEY_INVOICES = "invoices_v1";
 
 function money(n: number) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -50,26 +47,38 @@ function normalizeOverdue(invoices: Invoice[], todayKey: string) {
 }
 
 export default function DashboardScreen() {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const uid = user?.id;
   const { width } = useWindowDimensions();
   const isWide = width >= 900; // en web / tablet grande: 2 columnas fijas
   const colStyle = isWide ? styles.col2 : styles.col1;
 
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     React.useCallback(() => {
+      if (!uid) return;
       (async () => {
-        const c = (await getItemNullable<Client[]>(KEY_CLIENTS)) ?? [];
-        const invSaved = (await getItemNullable<Invoice[]>(KEY_INVOICES)) ?? [];
-        const todayKey = toDayKeyLocal(new Date());
-        const normalized = normalizeOverdue(invSaved, todayKey);
+        setLoading(true);
+        try {
+          const [c, invs] = await Promise.all([
+            getClients(uid),
+            getAllInvoices(uid)
+          ]);
+          const todayKey = toDayKeyLocal(new Date());
+          const normalized = normalizeOverdue(invs, todayKey);
 
-        setClients(c);
-        setInvoices(normalized);
+          setClients(c);
+          setInvoices(normalized);
+        } catch (error) {
+          console.error("Error loading dashboard data:", error);
+        } finally {
+          setLoading(false);
+        }
       })();
-    }, [])
+    }, [uid])
   );
 
   const clientById = useMemo(() => {
@@ -205,4 +214,5 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   logoutBtn: { padding: 8, borderRadius: 12, backgroundColor: "rgba(220, 38, 38, 0.05)" },
 });
+
 

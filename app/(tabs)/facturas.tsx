@@ -15,27 +15,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { InvoiceCard } from "../../components/InvoiceCard";
 import { InvoiceFormModal } from "../../components/InvoiceFormModal";
-import type { Activity, Client, Invoice, InvoiceStatus } from "../../models/types";
+import type { Client, Invoice, InvoiceStatus } from "../../models/types";
+import {
+    addInvoice,
+    deleteInvoice,
+    getAllInvoices,
+    getClients,
+    pushActivity,
+    updateInvoice
+} from "../../services/firestore";
 import { generateInvoicePDF } from "../../services/pdf";
-import { getItem, getItemNullable, setItem } from "../../services/storage";
+import { setItem } from "../../services/storage";
 import { colors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
+import { useAuth } from "../_layout";
 
-const KEY_CLIENTS = "clients_v1";
-const KEY_INVOICES = "invoices_v1";
-const KEY_ACTIVITY = "activity_v1";
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
-
-const SEED: Invoice[] = [
-    { id: "FAC-2026-001", clientId: "1", desc: "Servicios de consultoría - Enero 2026", amount: 25000, due: "2026-02-14", status: "Vencida" },
-    { id: "FAC-2026-002", clientId: "2", desc: "Materiales construcción - Lote A", amount: 45000, due: "2026-02-19", status: "Pendiente" },
-    { id: "FAC-2026-003", clientId: "3", desc: "Desarrollo de software - Fase 1", amount: 78000, due: "2026-02-07", status: "Pendiente" },
-    { id: "FAC-2026-004", clientId: "4", desc: "Mantenimiento equipos - Diciembre", amount: 15000, due: "2026-01-19", status: "Vencida" },
-];
-
-function uid() {
-    return Math.random().toString(16).slice(2) + Date.now().toString(16);
-}
 
 function money(n: number) {
     return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -65,22 +60,17 @@ function cmpYmd(a: string, b: string) {
 }
 
 // ✅ Auto: Pendiente -> Vencida si ya pasó la fecha (no toca Cobrada)
-function normalizeOverdue(invoices: Invoice[], todayKey: string) {
-    let changed = false;
-
-    const next = invoices.map((inv) => {
+function getNormalizedInvoices(invoices: Invoice[], todayKey: string) {
+    return invoices.map((inv) => {
         if (inv.status === "Cobrada") return inv;
         if (!inv.due || !isValidYYYYMMDD(inv.due)) return inv;
 
         const isPast = cmpYmd(inv.due, todayKey) === -1;
         if (isPast && inv.status !== "Vencida") {
-            changed = true;
             return { ...inv, status: "Vencida" as const };
         }
         return inv;
     });
-
-    return { next, changed };
 }
 
 // ✅ Orden pro (solo UI)
@@ -101,53 +91,42 @@ function sortInvoicesPro(a: Invoice, b: Invoice) {
 }
 
 export default function FacturasScreen() {
+    const { user } = useAuth();
+    const uid = user?.id;
+
     const [clients, setClients] = useState<Client[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [activity, setActivity] = useState<Activity[]>([]);
+    const [loading, setLoading] = useState(true);
     const [q, setQ] = useState("");
     const [filter, setFilter] = useState<"Todos" | InvoiceStatus>("Todos");
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Invoice | null>(null);
 
     async function loadAll() {
-        const c = await getItem<Client[]>(KEY_CLIENTS, []);
-        setClients(c);
+        if (!uid) return;
+        setLoading(true);
+        try {
+            const [c, invs] = await Promise.all([
+                getClients(uid),
+                getAllInvoices(uid)
+            ]);
+            setClients(c);
 
-        const savedAct = await getItem<Activity[]>(KEY_ACTIVITY, []);
-        setActivity(savedAct);
-
-        const saved = await getItemNullable<Invoice[]>(KEY_INVOICES);
-        const todayKey = toDayKeyLocal(new Date());
-
-        if (saved === null) {
-            const normalized = normalizeOverdue(SEED, todayKey);
-            setInvoices(normalized.next);
-            await setItem(KEY_INVOICES, normalized.next);
-        } else {
-            const normalized = normalizeOverdue(saved, todayKey);
-            setInvoices(normalized.next);
-            if (normalized.changed) await setItem(KEY_INVOICES, normalized.next);
+            const todayKey = toDayKeyLocal(new Date());
+            const normalized = getNormalizedInvoices(invs, todayKey);
+            setInvoices(normalized);
+        } catch (error) {
+            console.error("Error loading facturas data:", error);
+        } finally {
+            setLoading(false);
         }
     }
 
     useFocusEffect(
         React.useCallback(() => {
             loadAll();
-        }, [])
+        }, [uid])
     );
-
-    React.useEffect(() => {
-        setItem(KEY_INVOICES, invoices);
-    }, [invoices]);
-
-    React.useEffect(() => {
-        setItem(KEY_ACTIVITY, activity);
-    }, [activity]);
-
-    function pushActivity(a: Omit<Activity, "id" | "ts">) {
-        const entry: Activity = { id: uid(), ts: new Date().toISOString(), ...a };
-        setActivity((prev) => [entry, ...prev].slice(0, 50));
-    }
 
     const clientById = useMemo(() => {
         const m = new Map<string, Client>();
@@ -198,54 +177,74 @@ export default function FacturasScreen() {
         setModalOpen(true);
     }
 
-    function saveInvoice(data: Omit<Invoice, "id"> & { id?: string }) {
-        if (editing?.id) {
-            setInvoices((prev) =>
-                prev.map((x) => (x.id === editing.id ? { ...x, ...data, id: editing.id } : x))
-            );
+    async function saveInvoiceData(data: Omit<Invoice, "id"> & { id?: string }) {
+        if (!uid) return;
+        try {
+            if (editing?.id) {
+                await updateInvoice(uid, data.clientId, editing.id, {
+                    desc: data.desc,
+                    amount: data.amount,
+                    due: data.due,
+                    status: data.status
+                });
 
-            pushActivity({
-                type: "invoice_updated",
-                invoiceId: editing.id,
-                clientId: data.clientId,
-                amount: data.amount,
-                status: data.status,
-                desc: data.desc,
-                due: data.due,
-            });
-        } else {
-            const id = nextInvoiceId();
-            const created: Invoice = { ...data, id } as Invoice;
-            setInvoices((prev) => [created, ...prev]);
+                await pushActivity(uid, {
+                    type: "invoice_updated",
+                    invoiceId: editing.id,
+                    clientId: data.clientId,
+                    amount: data.amount,
+                    status: data.status,
+                    desc: data.desc,
+                    due: data.due,
+                    ts: new Date().toISOString()
+                });
+            } else {
+                const id = nextInvoiceId();
+                await addInvoice(uid, data.clientId, {
+                    desc: data.desc,
+                    amount: data.amount,
+                    due: data.due,
+                    status: data.status
+                });
 
-            pushActivity({
-                type: "invoice_created",
-                invoiceId: id,
-                clientId: created.clientId,
-                amount: created.amount,
-                status: created.status,
-                desc: created.desc,
-                due: created.due,
-            });
+                await pushActivity(uid, {
+                    type: "invoice_created",
+                    invoiceId: id,
+                    clientId: data.clientId,
+                    amount: data.amount,
+                    status: data.status,
+                    desc: data.desc,
+                    due: data.due,
+                    ts: new Date().toISOString()
+                });
+            }
+            setModalOpen(false);
+            loadAll();
+        } catch (error) {
+            Alert.alert("Error", "No se pudo guardar la factura.");
         }
     }
 
-    function markPaid(inv: Invoice) {
-        if (inv.status === "Cobrada") return;
+    async function markPaid(inv: Invoice) {
+        if (!uid || inv.status === "Cobrada") return;
 
-        const run = () => {
-            setInvoices((prev) =>
-                prev.map((x) => (x.id === inv.id ? { ...x, status: "Cobrada" as const } : x))
-            );
-            pushActivity({
-                type: "invoice_paid",
-                invoiceId: inv.id,
-                clientId: inv.clientId,
-                amount: inv.amount,
-                status: "Cobrada",
-                desc: inv.desc,
-                due: inv.due,
-            });
+        const run = async () => {
+            try {
+                await updateInvoice(uid, inv.clientId, inv.id, { status: "Cobrada" });
+                await pushActivity(uid, {
+                    type: "invoice_paid",
+                    invoiceId: inv.id,
+                    clientId: inv.clientId,
+                    amount: inv.amount,
+                    status: "Cobrada",
+                    desc: inv.desc,
+                    due: inv.due,
+                    ts: new Date().toISOString()
+                });
+                loadAll();
+            } catch (error) {
+                Alert.alert("Error", "No se pudo marcar como cobrada.");
+            }
         };
 
         if (Platform.OS === "web") return run();
@@ -256,18 +255,25 @@ export default function FacturasScreen() {
         ]);
     }
 
-    function deleteInvoice(inv: Invoice) {
-        const run = () => {
-            setInvoices((p) => p.filter((x) => x.id !== inv.id));
-            pushActivity({
-                type: "invoice_deleted",
-                invoiceId: inv.id,
-                clientId: inv.clientId,
-                amount: inv.amount,
-                status: inv.status,
-                desc: inv.desc,
-                due: inv.due,
-            });
+    async function handleDeleteInvoice(inv: Invoice) {
+        if (!uid) return;
+        const run = async () => {
+            try {
+                await deleteInvoice(uid, inv.clientId, inv.id);
+                await pushActivity(uid, {
+                    type: "invoice_deleted",
+                    invoiceId: inv.id,
+                    clientId: inv.clientId,
+                    amount: inv.amount,
+                    status: inv.status,
+                    desc: inv.desc,
+                    due: inv.due,
+                    ts: new Date().toISOString()
+                });
+                loadAll();
+            } catch (error) {
+                Alert.alert("Error", "No se pudo eliminar la factura.");
+            }
         };
 
         if (Platform.OS === "web") return run();
@@ -339,7 +345,7 @@ export default function FacturasScreen() {
                                 dueLabel={prettyDue(inv.due)}
                                 status={inv.status}
                                 onEdit={() => openEdit(inv)}
-                                onDelete={() => deleteInvoice(inv)}
+                                onDelete={() => handleDeleteInvoice(inv)}
                                 onMarkPaid={() => markPaid(inv)}
                                 onShare={() => {
                                     if (c) generateInvoicePDF(inv, c);
@@ -357,7 +363,7 @@ export default function FacturasScreen() {
                 <InvoiceFormModal
                     visible={modalOpen}
                     onClose={() => setModalOpen(false)}
-                    onSave={saveInvoice}
+                    onSave={saveInvoiceData}
                     clients={clients}
                     initial={editing}
                 />
