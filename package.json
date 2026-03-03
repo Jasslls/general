@@ -21,15 +21,11 @@
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "expo": "~54.0.33",
-<<<<<<< HEAD
     "expo-auth-session": "~7.0.10",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.8",
-=======
     "expo-build-properties": "~1.0.10",
-    "expo-constants": "~18.0.13",
     "expo-dev-client": "~6.0.20",
->>>>>>> af282698d007d863dd2b46129aea6947dfa62b52
     "expo-font": "~14.0.11",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",
