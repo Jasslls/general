@@ -59,10 +59,17 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      if (!uid) return;
+      const { auth } = require("../../services/firebase");
+      // Importante: No cargar datos hasta que Firebase Auth esté listo y coincida con el UID del contexto
+      if (!uid || !auth.currentUser || auth.currentUser.uid !== uid) {
+        console.log("Dashboard: Waiting for Firebase Auth sync...", { uid, fbUid: auth.currentUser?.uid });
+        return;
+      }
+
       (async () => {
         setLoading(true);
         try {
+          console.log("Dashboard: Fetching data for UID:", uid);
           const [c, invs] = await Promise.all([
             getClients(uid),
             getAllInvoices(uid)
@@ -72,8 +79,14 @@ export default function DashboardScreen() {
 
           setClients(c);
           setInvoices(normalized);
-        } catch (error) {
-          console.error("Error loading dashboard data:", error);
+        } catch (error: any) {
+          console.error("Dashboard Load Error:", {
+            message: error.message,
+            code: error.code,
+            uid: uid,
+            fbUid: auth.currentUser?.uid,
+            timestamp: new Date().toISOString()
+          });
         } finally {
           setLoading(false);
         }

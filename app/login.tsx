@@ -1,15 +1,4 @@
 // app/login.tsx
-//
-// Google Sign-In for Expo Go SDK 54 — NO proxy, NO Firebase handler.
-//
-// Flow (PKCE):
-//   1. useAuthRequest builds a Google OAuth URL with code_challenge (PKCE)
-//   2. promptAsync() opens ASWebAuthenticationSession (iOS) / Chrome Custom Tab (Android)
-//      which listens for the reverse-client-ID redirect scheme — no registration needed.
-//   3. Google redirects to com.googleusercontent.apps.XXX:/oauth2redirect?code=...
-//   4. We exchange the code for tokens (no client_secret needed for native clients + PKCE)
-//   5. Use the id_token to sign into Firebase → save session → navigate.
-
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useState } from "react";
@@ -18,29 +7,35 @@ import {
     Alert,
     Animated,
     Easing,
+    KeyboardAvoidingView,
     Platform,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    updateProfile,
+} from "firebase/auth";
 import { saveSession } from "../services/auth";
-import { signInWithGoogleToken } from "../services/firebase";
+import { auth, signInWithGoogleToken } from "../services/firebase";
 import { useAuth } from "./_layout";
 
 // Allows expo-web-browser to complete auth sessions on reload
 WebBrowser.maybeCompleteAuthSession();
 
 // ─── Client IDs  ─────────────────────────────────────────────────────────────
-// Use the NATIVE (iOS/Android) client IDs — Web client ID does NOT work here.
 const IOS_CLIENT_ID =
     "575779505449-48924ju5hjqpocuisj71l4u7crndlelu.apps.googleusercontent.com";
 const ANDROID_CLIENT_ID =
     "575779505449-ov75p3nu9frkdmnc6c59of92qhif596n.apps.googleusercontent.com";
 
-// Google OIDC discovery document
 const DISCOVERY = {
     authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenEndpoint: "https://oauth2.googleapis.com/token",
@@ -51,7 +46,6 @@ function getClientId() {
 }
 
 function getReverseClientId() {
-    // Reverse of the client ID = the iOS/Android redirect URI scheme Google accepts
     const id = getClientId().replace(".apps.googleusercontent.com", "");
     return `com.googleusercontent.apps.${id}`;
 }
@@ -66,15 +60,21 @@ function GoogleLogo() {
 }
 const gLogo = StyleSheet.create({
     wrapper: {
-        width: 24, height: 24, borderRadius: 12, backgroundColor: "#fff",
-        alignItems: "center", justifyContent: "center", marginRight: 12,
+        width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff",
+        alignItems: "center", justifyContent: "center", marginRight: 10,
     },
-    g: { fontSize: 15, fontWeight: "800", color: "#4285F4" },
+    g: { fontSize: 13, fontWeight: "800", color: "#4285F4" },
 });
 
 export default function LoginScreen() {
     const { setUser } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [isSignUp, setIsSignUp] = useState(false);
+
+    // Email/Password States
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [name, setName] = useState("");
 
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
     const slideAnim = React.useRef(new Animated.Value(40)).current;
@@ -129,7 +129,6 @@ export default function LoginScreen() {
 
     async function exchangeCodeForToken(code: string, codeVerifier: string) {
         try {
-            // Exchange auth code for tokens using PKCE — no client_secret needed for native clients
             const body = new URLSearchParams({
                 code,
                 client_id: clientId,
@@ -165,7 +164,7 @@ export default function LoginScreen() {
                 photo: fbUser.photoURL ?? null,
             };
             await saveSession(session);
-            setUser(session); // triggers layout → /(tabs)
+            setUser(session);
         } catch (e: any) {
             console.error("Token exchange error:", e);
             Alert.alert("Error", e?.message ?? "No se pudo iniciar sesión.");
@@ -174,61 +173,198 @@ export default function LoginScreen() {
         }
     }
 
-    function onPressIn() { Animated.spring(btnScale, { toValue: 0.96, useNativeDriver: true, speed: 30 }).start(); }
-    function onPressOut() { Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 30 }).start(); }
+    function validateEmail(emailAddr: string) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddr);
+    }
 
-    async function handleLogin() {
+    async function handleEmailAuth() {
+        if (!email.trim() || !password.trim() || (isSignUp && !name.trim())) {
+            return Alert.alert("Faltan datos", "Por favor completa todos los campos.");
+        }
+
+        if (!validateEmail(email.trim())) {
+            return Alert.alert("Email inválido", "Por favor ingresa un correo electrónico válido (ej: usuario@dominio.com).");
+        }
+
+        setLoading(true);
+        try {
+            let fbUser;
+            if (isSignUp) {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                fbUser = userCredential.user;
+                await updateProfile(fbUser, { displayName: name });
+            } else {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                fbUser = userCredential.user;
+            }
+
+            const session = {
+                id: fbUser.uid,
+                name: fbUser.displayName ?? (name || "Usuario"),
+                email: fbUser.email ?? email,
+                photo: fbUser.photoURL ?? null,
+            };
+            await saveSession(session);
+            setUser(session);
+        } catch (e: any) {
+            console.error("Email Auth Error:", e.code, e.message);
+            let msg = "Ocurrió un error inesperado.";
+
+            // Firebase Auth Error Codes
+            switch (e.code) {
+                case "auth/email-already-in-use":
+                    msg = "Este correo electrónico ya está registrado. Intenta iniciar sesión.";
+                    break;
+                case "auth/invalid-email":
+                    msg = "La dirección de correo electrónico no es válida.";
+                    break;
+                case "auth/weak-password":
+                    msg = "La contraseña es muy débil. Debe tener al menos 6 caracteres.";
+                    break;
+                case "auth/user-not-found":
+                case "auth/wrong-password":
+                case "auth/invalid-credential":
+                    msg = isSignUp
+                        ? "No se pudo crear la cuenta. Verifica los datos."
+                        : "Correo o contraseña incorrectos. Verifica tus credenciales o regístrate si no tienes cuenta.";
+                    break;
+                case "auth/network-request-failed":
+                    msg = "Error de red. Verifica tu conexión a internet.";
+                    break;
+                case "auth/too-many-requests":
+                    msg = "Demasiados intentos fallidos. Intenta más tarde.";
+                    break;
+                default:
+                    msg = e.message || msg;
+            }
+
+            Alert.alert("Error de Autenticación", msg);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleGoogleLogin() {
         setLoading(true);
         await promptAsync();
     }
 
+    function onPressIn() { Animated.spring(btnScale, { toValue: 0.96, useNativeDriver: true, speed: 30 }).start(); }
+    function onPressOut() { Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 30 }).start(); }
+
     return (
         <SafeAreaView style={styles.safe}>
-            <View style={styles.blobTop} />
-            <View style={styles.blobBottom} />
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+                <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+                    <View style={styles.blobTop} />
+                    <View style={styles.blobBottom} />
 
-            <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                {/* Logo */}
-                <Animated.View style={[styles.logoRing, { transform: [{ scale: pulseAnim }] }]}>
-                    <View style={styles.logoInner}>
-                        <Text style={styles.logoEmoji}>💰</Text>
-                    </View>
-                </Animated.View>
+                    <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                        {/* Logo */}
+                        <Animated.View style={[styles.logoRing, { transform: [{ scale: pulseAnim }] }]}>
+                            <View style={styles.logoInner}>
+                                <Text style={styles.logoEmoji}>💰</Text>
+                            </View>
+                        </Animated.View>
 
-                <Text style={styles.appName}>PagoFijo</Text>
-                <Text style={styles.tagline}>Gestiona tus cobros{"\n"}de forma inteligente</Text>
+                        <Text style={styles.appName}>PagoFijo</Text>
+                        <Text style={styles.tagline}>Gestiona tus cobros{"\n"}de forma inteligente</Text>
 
-                <View style={styles.divider} />
+                        <View style={styles.divider} />
 
-                <Text style={styles.welcomeTitle}>Bienvenido</Text>
-                <Text style={styles.welcomeSub}>Inicia sesión para acceder a tu cuenta</Text>
+                        <Text style={styles.welcomeTitle}>{isSignUp ? "Crear cuenta" : "Bienvenido"}</Text>
+                        <Text style={styles.welcomeSub}>
+                            {isSignUp ? "Regístrate para empezar a gestionar tus cobros" : "Inicia sesión para acceder a tu cuenta"}
+                        </Text>
 
-                {/* Google Sign-in Button */}
-                <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%" }}>
-                    <Pressable
-                        style={({ pressed }) => [styles.googleBtn, pressed && styles.googleBtnPressed]}
-                        onPress={handleLogin}
-                        onPressIn={onPressIn}
-                        onPressOut={onPressOut}
-                        disabled={loading || !request}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" size="small" />
-                        ) : (
-                            <>
-                                <GoogleLogo />
-                                <Text style={styles.googleBtnText}>Continuar con Google</Text>
-                            </>
-                        )}
-                    </Pressable>
-                </Animated.View>
+                        {/* Email/Password Form */}
+                        <View style={styles.form}>
+                            {isSignUp && (
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.label}>Nombre completo</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Juan Pérez"
+                                        placeholderTextColor="#475569"
+                                        value={name}
+                                        onChangeText={setName}
+                                    />
+                                </View>
+                            )}
 
-                <Text style={styles.legal}>
-                    Al continuar, aceptas nuestros{" "}
-                    <Text style={styles.legalLink}>Términos de servicio</Text> y{" "}
-                    <Text style={styles.legalLink}>Política de privacidad</Text>
-                </Text>
-            </Animated.View>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Correo electrónico</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="correo@ejemplo.com"
+                                    placeholderTextColor="#475569"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Contraseña</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="••••••••"
+                                    placeholderTextColor="#475569"
+                                    secureTextEntry
+                                    value={password}
+                                    onChangeText={setPassword}
+                                />
+                            </View>
+
+                            <Pressable
+                                style={({ pressed }) => [styles.mainBtn, pressed && styles.mainBtnPressed]}
+                                onPress={handleEmailAuth}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                    <Text style={styles.mainBtnText}>{isSignUp ? "Registrarse" : "Entrar"}</Text>
+                                )}
+                            </Pressable>
+
+                            <View style={styles.orRow}>
+                                <View style={styles.orLine} />
+                                <Text style={styles.orText}>o</Text>
+                                <View style={styles.orLine} />
+                            </View>
+
+                            {/* Google Sign-in Button */}
+                            <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%" }}>
+                                <Pressable
+                                    style={({ pressed }) => [styles.googleBtn, pressed && styles.googleBtnPressed]}
+                                    onPress={handleGoogleLogin}
+                                    onPressIn={onPressIn}
+                                    onPressOut={onPressOut}
+                                    disabled={loading || !request}
+                                >
+                                    <GoogleLogo />
+                                    <Text style={styles.googleBtnText}>Continuar con Google</Text>
+                                </Pressable>
+                            </Animated.View>
+                        </View>
+
+                        <Pressable onPress={() => setIsSignUp(!isSignUp)} style={styles.toggleMode}>
+                            <Text style={styles.toggleText}>
+                                {isSignUp ? "¿Ya tienes cuenta? " : "¿No tienes cuenta? "}
+                                <Text style={styles.toggleLink}>{isSignUp ? "Inicia sesión" : "Regístrate"}</Text>
+                            </Text>
+                        </Pressable>
+
+                        <Text style={styles.legal}>
+                            Al continuar, aceptas nuestros{" "}
+                            <Text style={styles.legalLink}>Términos</Text> y{" "}
+                            <Text style={styles.legalLink}>Privacidad</Text>
+                        </Text>
+                    </Animated.View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -245,39 +381,70 @@ const styles = StyleSheet.create({
         borderRadius: 140, backgroundColor: "#1E3A5F", opacity: 0.3,
     },
 
-    container: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
+    container: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, paddingVertical: 40 },
 
     logoRing: {
-        width: 100, height: 100, borderRadius: 50, borderWidth: 2,
+        width: 80, height: 80, borderRadius: 40, borderWidth: 2,
         borderColor: "rgba(59, 130, 246, 0.5)", alignItems: "center",
-        justifyContent: "center", marginBottom: 20,
+        justifyContent: "center", marginBottom: 16,
         backgroundColor: "rgba(59, 130, 246, 0.08)",
     },
     logoInner: {
-        width: 78, height: 78, borderRadius: 39,
+        width: 62, height: 62, borderRadius: 31,
         backgroundColor: "rgba(59, 130, 246, 0.15)",
         alignItems: "center", justifyContent: "center",
     },
-    logoEmoji: { fontSize: 38 },
+    logoEmoji: { fontSize: 32 },
 
-    appName: { fontSize: 38, fontWeight: "900", color: "#FFFFFF", letterSpacing: -1, marginBottom: 8 },
-    tagline: { fontSize: 16, color: "#94A3B8", textAlign: "center", lineHeight: 24, fontWeight: "500" },
+    appName: { fontSize: 34, fontWeight: "900", color: "#FFFFFF", letterSpacing: -1, marginBottom: 4 },
+    tagline: { fontSize: 14, color: "#94A3B8", textAlign: "center", lineHeight: 22, fontWeight: "500" },
 
-    divider: { width: 48, height: 3, borderRadius: 2, backgroundColor: "#3B82F6", marginVertical: 32, opacity: 0.7 },
+    divider: { width: 40, height: 3, borderRadius: 2, backgroundColor: "#3B82F6", marginVertical: 24, opacity: 0.7 },
 
-    welcomeTitle: { fontSize: 24, fontWeight: "800", color: "#F1F5F9", marginBottom: 8 },
-    welcomeSub: { fontSize: 14, color: "#64748B", marginBottom: 32, textAlign: "center" },
+    welcomeTitle: { fontSize: 22, fontWeight: "800", color: "#F1F5F9", marginBottom: 6 },
+    welcomeSub: { fontSize: 13, color: "#64748B", marginBottom: 24, textAlign: "center" },
+
+    form: { width: "100%", gap: 16 },
+    inputGroup: { gap: 6 },
+    label: { color: "#94A3B8", fontSize: 13, fontWeight: "600", marginLeft: 4 },
+    input: {
+        backgroundColor: "#1E293B",
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        color: "#F1F5F9",
+        fontSize: 15,
+        borderWidth: 1,
+        borderColor: "#334155",
+    },
+
+    mainBtn: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: 14,
+        paddingVertical: 14,
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 8,
+    },
+    mainBtnPressed: { opacity: 0.9 },
+    mainBtnText: { color: "#0F1117", fontSize: 16, fontWeight: "700" },
+
+    orRow: { flexDirection: "row", alignItems: "center", marginVertical: 8 },
+    orLine: { flex: 1, height: 1, backgroundColor: "#334155" },
+    orText: { color: "#64748B", marginHorizontal: 12, fontSize: 12, fontWeight: "600" },
 
     googleBtn: {
         flexDirection: "row", alignItems: "center", justifyContent: "center",
-        backgroundColor: "#2563EB", borderRadius: 16, paddingVertical: 16,
-        paddingHorizontal: 24, width: "100%", shadowColor: "#2563EB",
-        shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45,
-        shadowRadius: 20, elevation: 10, minHeight: 56,
+        backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 14, paddingVertical: 14,
+        paddingHorizontal: 24, width: "100%", borderWidth: 1, borderColor: "#334155",
     },
-    googleBtnPressed: { backgroundColor: "#1D4ED8" },
-    googleBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
+    googleBtnPressed: { backgroundColor: "rgba(255,255,255,0.1)" },
+    googleBtnText: { color: "#F1F5F9", fontSize: 15, fontWeight: "600" },
 
-    legal: { marginTop: 24, fontSize: 12, color: "#475569", textAlign: "center", lineHeight: 18, paddingHorizontal: 16 },
+    toggleMode: { marginTop: 20 },
+    toggleText: { color: "#94A3B8", fontSize: 14 },
+    toggleLink: { color: "#3B82F6", fontWeight: "700" },
+
+    legal: { marginTop: 24, fontSize: 11, color: "#475569", textAlign: "center", lineHeight: 16 },
     legalLink: { color: "#60A5FA", fontWeight: "600" },
 });

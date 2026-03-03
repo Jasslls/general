@@ -1,10 +1,10 @@
 // services/firebase.ts
 import { initializeApp } from "firebase/app";
 import {
-    GoogleAuthProvider,
-    signOut as firebaseSignOut,
     getAuth,
+    GoogleAuthProvider,
     signInWithCredential,
+    signOut,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -31,5 +31,5 @@ export async function signInWithGoogleToken(idToken: string) {
 }
 
 export async function signOutFirebase() {
-    return firebaseSignOut(auth);
+    return signOut(auth);
 }
