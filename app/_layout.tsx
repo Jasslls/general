@@ -1,8 +1,10 @@
 // app/_layout.tsx
+import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { router, Stack, useSegments } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { useAppColors } from "../themes/colors";
 
 import { clearSession, getSession, saveSession, UserSession } from "../services/auth";
 import { auth } from "../services/firebase";
@@ -109,11 +111,36 @@ export default function RootLayout() {
 
   return (
     <AuthContext.Provider value={{ user, setUser, signOut, refreshUser }}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <RootLayoutNav />
+    </AuthContext.Provider>
+  );
+}
+
+function RootLayoutNav() {
+  const colors = useAppColors();
+  const isDark = colors.bg === "#0F1117";
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
+
+  const navTheme = {
+    ...baseTheme,
+    colors: {
+      ...baseTheme.colors,
+      primary: colors.primary,
+      background: colors.bg,
+      card: colors.card,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.danger,
+    },
+  };
+
+  return (
+    <ThemeProvider value={navTheme}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
         <Stack.Screen name="login" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
-    </AuthContext.Provider>
+    </ThemeProvider>
   );
 }

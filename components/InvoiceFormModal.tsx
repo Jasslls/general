@@ -14,7 +14,7 @@ import {
 
 import type { Client, Invoice, InvoiceStatus } from "../models/types";
 import { setItem } from "../services/storage";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 import { DateField } from "./DateField";
 
 type Form = {
@@ -48,6 +48,8 @@ export function InvoiceFormModal({
     clients: Client[];
     initial?: Invoice | null;
 }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const [form, setForm] = useState<Form>({
         clientId: "",
         desc: "",
@@ -263,7 +265,7 @@ export function InvoiceFormModal({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", padding: 16 },
     card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, maxHeight: "85%" },
     title: { fontSize: 18, fontWeight: "900", color: colors.text, marginBottom: 10 },

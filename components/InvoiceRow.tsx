@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 
 type Props = {
     id: string;
@@ -10,6 +10,8 @@ type Props = {
 };
 
 export function InvoiceRow({ id, client, amount, status, subtitle }: Props) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const badgeColor =
         status === "Vencida"
             ? colors.danger
@@ -48,7 +50,7 @@ export function InvoiceRow({ id, client, amount, status, subtitle }: Props) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     row: {
         backgroundColor: colors.card,
         borderRadius: 14,

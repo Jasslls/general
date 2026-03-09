@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { Client, Invoice } from "../models/types";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 
 /* Utils */
 function sum(list: number[]) {
@@ -20,6 +20,8 @@ function daysDiff(due: string) {
 
 /* 1️⃣ Antigüedad de saldos */
 export function AgingBarCard({ invoices }: { invoices: Invoice[] }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const data = useMemo(() => {
         const buckets = { vigente: 0, d30: 0, d60: 0, d90: 0, d90p: 0 };
 
@@ -78,6 +80,8 @@ export function TopClientsBarCard({
     invoices: Invoice[];
     clients: Client[];
 }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const rows = useMemo(() => {
         const map = new Map<string, { paid: number; pending: number }>();
 
@@ -125,6 +129,8 @@ export function TopClientsBarCard({
 
 /* 3️⃣ Flujo mensual (simple, sin chart lib) */
 export function CashFlowLineCard({ invoices }: { invoices: Invoice[] }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const paid = sum(invoices.filter((i) => i.status === "Cobrada").map((i) => i.amount));
     const pending = sum(invoices.filter((i) => i.status !== "Cobrada").map((i) => i.amount));
 
@@ -147,6 +153,8 @@ export function CashFlowLineCard({ invoices }: { invoices: Invoice[] }) {
 
 /* 4️⃣ KPIs */
 export function ReportsKpis({ invoices }: { invoices: Invoice[] }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const paid = sum(invoices.filter((i) => i.status === "Cobrada").map((i) => i.amount));
     const pending = sum(invoices.filter((i) => i.status !== "Cobrada").map((i) => i.amount));
 
@@ -163,6 +171,8 @@ export function ReportsKpis({ invoices }: { invoices: Invoice[] }) {
 }
 
 function Kpi({ title, value, color }: { title: string; value: string; color: string }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     return (
         <View style={styles.kpi}>
             <Text style={styles.kpiTitle}>{title}</Text>
@@ -172,7 +182,7 @@ function Kpi({ title, value, color }: { title: string; value: string; color: str
 }
 
 /* Styles */
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     card: {
         backgroundColor: colors.card,
         borderRadius: 16,

@@ -24,13 +24,15 @@ import {
     updateClient
 } from "../../services/firestore";
 import { getItemNullable, setItem } from "../../services/storage";
-import { colors } from "../../themes/colors";
+import { lightColors, useAppColors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
 import { useAuth } from "../_layout";
 
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
 
 export default function ClientesScreen() {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const { user } = useAuth();
     const uid = user?.id;
 
@@ -238,7 +240,7 @@ export default function ClientesScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.bg },
     screen: { flex: 1, backgroundColor: colors.bg },
 

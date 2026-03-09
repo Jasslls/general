@@ -4,18 +4,22 @@ import { Tabs } from "expo-router";
 import React from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAppColors } from "../../themes/colors";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const appColors = useAppColors();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarActiveTintColor: appColors.primary,
+        tabBarInactiveTintColor: appColors.muted,
+        tabBarStyle: {
+          backgroundColor: appColors.card,
+          borderTopColor: appColors.border,
+        },
       }}
     >
       <Tabs.Screen
@@ -44,6 +48,16 @@ export default function TabLayout() {
           title: "Facturas",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt-outline" size={size ?? 26} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="cuenta"
+        options={{
+          title: "Cuenta",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size ?? 26} color={color} />
           ),
         }}
       />

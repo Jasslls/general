@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { Invoice } from "../models/types";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 
 /* ---------------- helpers ---------------- */
 
@@ -33,6 +33,8 @@ function monthLabelEs(d: Date) {
  * - Últimos 5 meses (incluyendo el actual)
  */
 export function CashFlowBarCard({ invoices }: { invoices: Invoice[] }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const series = useMemo(() => {
         const now = new Date();
         // últimos 5 meses (4 atrás + actual)
@@ -131,6 +133,8 @@ export function CashFlowBarCard({ invoices }: { invoices: Invoice[] }) {
  * - % sobre total de facturas (count)
  */
 export function InvoiceStatusPieCard({ invoices }: { invoices: Invoice[] }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const stats = useMemo(() => {
         const total = invoices?.length ?? 0;
         let pendientes = 0;
@@ -188,7 +192,7 @@ export function InvoiceStatusPieCard({ invoices }: { invoices: Invoice[] }) {
 
 /* ---------------- STYLES ---------------- */
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     card: {
         backgroundColor: colors.card,
         borderRadius: 14,

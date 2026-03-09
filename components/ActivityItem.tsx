@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { Activity, Client, InvoiceStatus } from "../models/types";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 
-function badgeStyle(status?: InvoiceStatus) {
+function badgeStyle(status: InvoiceStatus | undefined, colors: any) {
   if (status === "Vencida") return { bg: colors.danger + "1A", fg: colors.danger };
   if (status === "Cobrada") return { bg: colors.success + "1A", fg: colors.success };
   if (status === "Pendiente") return { bg: colors.primary + "1A", fg: colors.primary };
@@ -43,7 +43,9 @@ function fmtTs(iso: string) {
 }
 
 export function ActivityItem({ a, client }: { a: Activity; client?: Client }) {
-  const b = badgeStyle(a.status);
+  const colors = useAppColors();
+  const styles = getStyles(colors);
+  const b = badgeStyle(a.status, colors);
 
   const subtitle = useMemo(() => {
     const parts: string[] = [];
@@ -87,7 +89,7 @@ export function ActivityItem({ a, client }: { a: Activity; client?: Client }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
   card: {
     flexDirection: "row",
     gap: 12,

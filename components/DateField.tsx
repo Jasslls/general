@@ -1,7 +1,7 @@
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import React, { useMemo, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 
 function isValidYYYYMMDD(s: string) {
     return /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -37,6 +37,8 @@ export function DateField({
     value: string; // "YYYY-MM-DD"
     onChange: (ymd: string) => void;
 }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const [open, setOpen] = useState(false);
 
     const currentDate = useMemo(() => dateFromYmd(value), [value]);
@@ -100,7 +102,7 @@ export function DateField({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     label: { color: colors.muted, fontWeight: "800", marginBottom: 6 },
     inputLike: {
         borderWidth: 1,

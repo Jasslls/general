@@ -1,7 +1,7 @@
 import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 
 type Props = {
     name: string;
@@ -15,6 +15,8 @@ type Props = {
 };
 
 export function ClientCard({ name, company, email, phone, rfc, onEdit, onDelete, onWhatsApp }: Props) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     return (
         <View style={styles.card}>
             <View style={styles.topRow}>
@@ -52,7 +54,7 @@ export function ClientCard({ name, company, email, phone, rfc, onEdit, onDelete,
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     card: {
         flex: 1,
         backgroundColor: colors.card,

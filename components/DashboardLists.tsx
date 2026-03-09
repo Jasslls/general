@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { Client, Invoice } from "../models/types";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 import { InvoiceRow } from "./InvoiceRow";
 
 function isValidYYYYMMDD(s: string) {
@@ -26,6 +26,8 @@ export function OverduePaymentsCard({
     invoices: Invoice[];
     clientsById: Map<string, Client>;
 }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const list = useMemo(() => {
         const today = toDayKeyLocal(new Date());
         return invoices
@@ -68,6 +70,8 @@ export function UpcomingPaymentsCard({
     invoices: Invoice[];
     clientsById: Map<string, Client>;
 }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const list = useMemo(() => {
         const today = toDayKeyLocal(new Date());
         return invoices
@@ -103,7 +107,7 @@ export function UpcomingPaymentsCard({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     card: {
         backgroundColor: colors.card,
         borderWidth: 1,

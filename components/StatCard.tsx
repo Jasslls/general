@@ -1,7 +1,9 @@
-import { colors } from "@/themes/colors";
+import { lightColors, useAppColors } from "@/themes/colors";
 import { StyleSheet, Text, View } from "react-native";
 
 export function StatCard({ title, value, color }: { title: string; value: string; color: string }) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     return (
         <View style={styles.card}>
             <Text style={styles.title}>{title}</Text>
@@ -10,7 +12,7 @@ export function StatCard({ title, value, color }: { title: string; value: string
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     card: {
         backgroundColor: colors.card,
         borderRadius: 14,

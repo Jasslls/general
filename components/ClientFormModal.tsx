@@ -10,7 +10,7 @@ import {
     TextInput,
     View,
 } from "react-native";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 
 type Client = {
     name: string;
@@ -30,6 +30,8 @@ type Props = {
 const EMPTY: Client = { name: "", company: "", email: "", phone: "", rfc: "" };
 
 export function ClientFormModal({ visible, onClose, onSave, initial }: Props) {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const [form, setForm] = useState<Client>(EMPTY);
 
     useEffect(() => {
@@ -128,7 +130,7 @@ export function ClientFormModal({ visible, onClose, onSave, initial }: Props) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.4)",

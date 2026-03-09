@@ -22,6 +22,16 @@ const invoicesColl = (uid: string, clientId: string) => collection(doc(clientsCo
 const paymentsColl = (uid: string, clientId: string, invoiceId: string) =>
     collection(doc(invoicesColl(uid, clientId), invoiceId), "payments");
 
+export async function updateUserSettings(uid: string, settings: any): Promise<void> {
+    const ref = userDoc(uid);
+    await updateDoc(ref, { settings });
+}
+
+export async function updateUserProfile(uid: string, data: { name?: string; phone?: string }): Promise<void> {
+    const ref = userDoc(uid);
+    await updateDoc(ref, data);
+}
+
 // --- Clientes ---
 
 export async function getClients(uid: string): Promise<Client[]> {

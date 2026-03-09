@@ -26,7 +26,7 @@ import {
 } from "../../services/firestore";
 import { generateInvoicePDF } from "../../services/pdf";
 import { setItem } from "../../services/storage";
-import { colors } from "../../themes/colors";
+import { lightColors, useAppColors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
 import { useAuth } from "../_layout";
 
@@ -91,6 +91,8 @@ function sortInvoicesPro(a: Invoice, b: Invoice) {
 }
 
 export default function FacturasScreen() {
+    const colors = useAppColors();
+    const styles = getStyles(colors);
     const { user } = useAuth();
     const uid = user?.id;
 
@@ -372,7 +374,7 @@ export default function FacturasScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.bg },
     screen: { flex: 1, backgroundColor: colors.bg },
 

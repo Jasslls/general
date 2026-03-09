@@ -2,9 +2,9 @@ import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { InvoiceStatus } from "../models/types";
-import { colors } from "../themes/colors";
+import { lightColors, useAppColors } from "../themes/colors";
 
-function badgeStyle(status: InvoiceStatus) {
+function badgeStyle(status: InvoiceStatus, colors: any) {
     if (status === "Vencida") return { bg: colors.danger + "1A", fg: colors.danger };
     if (status === "Cobrada") return { bg: colors.success + "1A", fg: colors.success };
     return { bg: colors.border, fg: colors.text };
@@ -35,7 +35,9 @@ export function InvoiceCard({
     onShare?: () => void;
     onWhatsApp?: () => void;
 }) {
-    const b = badgeStyle(status);
+    const colors = useAppColors();
+    const styles = getStyles(colors);
+    const b = badgeStyle(status, colors);
     const canMarkPaid = status !== "Cobrada";
 
     return (
@@ -92,7 +94,7 @@ export function InvoiceCard({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     card: {
         backgroundColor: colors.card,
         borderRadius: 14,

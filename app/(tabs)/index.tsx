@@ -1,7 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../_layout";
@@ -12,7 +11,7 @@ import { InvoiceRow } from "../../components/InvoiceRow";
 import { StatCard } from "../../components/StatCard";
 import type { Client, Invoice } from "../../models/types";
 import { getAllInvoices, getClients } from "../../services/firestore";
-import { colors } from "../../themes/colors";
+import { lightColors, useAppColors } from "../../themes/colors";
 
 function money(n: number) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -47,7 +46,9 @@ function normalizeOverdue(invoices: Invoice[], todayKey: string) {
 }
 
 export default function DashboardScreen() {
-  const { user, signOut } = useAuth();
+  const colors = useAppColors();
+  const styles = getStyles(colors);
+  const { user } = useAuth();
   const uid = user?.id;
   const { width } = useWindowDimensions();
   const isWide = width >= 900; // en web / tablet grande: 2 columnas fijas
@@ -143,9 +144,6 @@ export default function DashboardScreen() {
             <Text style={styles.h1}>Estadísticas</Text>
             <Text style={styles.sub}>Resumen de tu cartera y cobros</Text>
           </View>
-          <Pressable onPress={signOut} style={styles.logoutBtn}>
-            <Ionicons name="log-out-outline" size={22} color={colors.danger} />
-          </Pressable>
         </View>
 
         {/* KPIs */}
@@ -202,7 +200,7 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: typeof lightColors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, paddingBottom: 28 },
@@ -225,7 +223,6 @@ const styles = StyleSheet.create({
   sectionHeader: { marginTop: 16, marginBottom: 8 },
   sectionTitle: { fontSize: 16, fontWeight: "800", color: colors.text },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  logoutBtn: { padding: 8, borderRadius: 12, backgroundColor: "rgba(220, 38, 38, 0.05)" },
 });
 
 

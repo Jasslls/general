@@ -1,13 +1,23 @@
 // services/auth.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { updateProfile } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import { auth, db } from "./firebase";
+
+export interface BusinessSettings {
+    currency: string;
+    lateFeePercentage: number;
+    graceDays: number;
+    theme?: 'light' | 'dark' | 'system';
+}
 
 export interface UserSession {
     id: string;
     name: string;
     email: string;
     photo: string | null;
+    phone?: string;
+    settings?: BusinessSettings;
 }
 
 const SESSION_KEY = "user_session_v1";
@@ -20,11 +30,32 @@ export async function ensureUserDocument(user: UserSession): Promise<void> {
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
+        const defaultSettings: BusinessSettings = {
+            currency: 'L',
+            lateFeePercentage: 0,
+            graceDays: 0,
+            theme: 'system',
+        };
         await setDoc(userRef, {
             name: user.name,
             email: user.email,
+            phone: user.phone || "",
             createdAt: serverTimestamp(),
+            settings: defaultSettings,
         });
+        user.settings = defaultSettings;
+    } else {
+        const data = snap.data();
+        if (data) {
+            if (data.phone) user.phone = data.phone;
+            if (data.settings) user.settings = data.settings as BusinessSettings;
+        }
+    }
+}
+
+export async function updateAuthDisplayName(name: string): Promise<void> {
+    if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: name });
     }
 }
 
