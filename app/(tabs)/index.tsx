@@ -141,8 +141,8 @@ export default function DashboardScreen() {
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.h1}>Estadísticas</Text>
-            <Text style={styles.sub}>Resumen de tu cartera y cobros</Text>
+            <Text style={styles.h1}>PagoFijo</Text>
+            <Text style={styles.sub}>Bienvenido a PagoFijo – administra tus clientes y facturas fácilmente</Text>
           </View>
         </View>
 
