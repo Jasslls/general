@@ -220,7 +220,19 @@ export default function CuentaScreen() {
                         <Text style={styles.supportBtnText}>SOPORTE</Text>
                     </Pressable>
 
-                    <Pressable style={styles.logoutBtn} onPress={signOut}>
+                    <Pressable
+                        style={styles.logoutBtn}
+                        onPress={() => {
+                            Alert.alert(
+                                "¿Estás seguro que deseas cerrar sesión?",
+                                "",
+                                [
+                                    { text: "Cancelar", style: "cancel" },
+                                    { text: "Cerrar sesión", style: "destructive", onPress: signOut }
+                                ]
+                            );
+                        }}
+                    >
                         <Ionicons name="log-out-outline" size={20} color={colors.danger} />
                         <Text style={styles.logoutBtnText}>CERRAR SESIÓN</Text>
                     </Pressable>
