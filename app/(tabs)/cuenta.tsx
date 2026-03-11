@@ -5,6 +5,7 @@ import {
     Alert,
     Linking,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -223,14 +224,21 @@ export default function CuentaScreen() {
                     <Pressable
                         style={styles.logoutBtn}
                         onPress={() => {
-                            Alert.alert(
-                                "¿Estás seguro que deseas cerrar sesión?",
-                                "",
-                                [
-                                    { text: "Cancelar", style: "cancel" },
-                                    { text: "Cerrar sesión", style: "destructive", onPress: signOut }
-                                ]
-                            );
+                            if (Platform.OS === "web") {
+                                const confirmLogout = window.confirm("¿Estás seguro que deseas cerrar sesión?");
+                                if (confirmLogout) {
+                                    signOut();
+                                }
+                            } else {
+                                Alert.alert(
+                                    "¿Estás seguro que deseas cerrar sesión?",
+                                    "",
+                                    [
+                                        { text: "Cancelar", style: "cancel" },
+                                        { text: "Cerrar sesión", style: "destructive", onPress: signOut }
+                                    ]
+                                );
+                            }
                         }}
                     >
                         <Ionicons name="log-out-outline" size={20} color={colors.danger} />
