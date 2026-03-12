@@ -56,47 +56,60 @@ export function DateField({
         <View style={{ marginTop: 10 }}>
             <Text style={styles.label}>{label}</Text>
 
-            <Pressable
-                onPress={() => setOpen(true)}
-                style={({ pressed }) => [styles.inputLike, pressed && { opacity: 0.9 }]}
-            >
-                <Text style={[styles.value, !isValidYYYYMMDD(value) && { color: colors.muted }]}>
-                    {displayText}
-                </Text>
-                <Text style={styles.chev}>▾</Text>
-            </Pressable>
-
-            {/* iOS: se puede mostrar inline bonito */}
-            {open && Platform.OS === "ios" && (
-                <View style={styles.pickerWrap}>
-                    <DateTimePicker
-                        value={currentDate}
-                        mode="date"
-                        display="inline"
-                        onChange={onPick}
+            {Platform.OS === "web" ? (
+                <View style={[styles.inputLike, { paddingHorizontal: 0, overflow: "hidden" }]}>
+                    <input
+                        type="date"
+                        value={isValidYYYYMMDD(value) ? value : ""}
+                        onChange={(e) => onChange(e.target.value)}
+                        style={{
+                            border: "none",
+                            background: "transparent",
+                            color: colors.text,
+                            width: "100%",
+                            height: "100%",
+                            paddingLeft: 12,
+                            paddingRight: 12,
+                            fontSize: 15,
+                            outline: "none",
+                            fontFamily: "inherit",
+                            fontWeight: "700"
+                        } as React.CSSProperties}
+                        required
                     />
-                    <Pressable onPress={() => setOpen(false)} style={styles.doneBtn}>
-                        <Text style={styles.doneText}>Listo</Text>
-                    </Pressable>
                 </View>
-            )}
-
-            {/* Android: popup nativo */}
-            {open && Platform.OS === "android" && (
-                <DateTimePicker value={currentDate} mode="date" display="default" onChange={onPick} />
-            )}
-
-            {/* Web: sin meter libs raras, dejamos tu input anterior o texto.
-          Si quieres calendario real en web, ahí sí tocaría otra lib. */}
-            {open && Platform.OS === "web" && (
-                <View style={styles.webHint}>
-                    <Text style={styles.webHintText}>
-                        En web no hay calendario nativo aquí sin librería extra. En móvil sí.
-                    </Text>
-                    <Pressable onPress={() => setOpen(false)} style={styles.doneBtn}>
-                        <Text style={styles.doneText}>OK</Text>
+            ) : (
+                <>
+                    <Pressable
+                        onPress={() => setOpen(true)}
+                        style={({ pressed }) => [styles.inputLike, pressed && { opacity: 0.9 }]}
+                    >
+                        <Text style={[styles.value, !isValidYYYYMMDD(value) && { color: colors.muted }]}>
+                            {displayText}
+                        </Text>
+                        <Text style={styles.chev}>▾</Text>
                     </Pressable>
-                </View>
+
+                    {/* iOS: se puede mostrar inline bonito */}
+                    {open && Platform.OS === "ios" && (
+                        <View style={styles.pickerWrap}>
+                            <DateTimePicker
+                                value={currentDate}
+                                mode="date"
+                                display="inline"
+                                onChange={onPick}
+                            />
+                            <Pressable onPress={() => setOpen(false)} style={styles.doneBtn}>
+                                <Text style={styles.doneText}>Listo</Text>
+                            </Pressable>
+                        </View>
+                    )}
+
+                    {/* Android: popup nativo */}
+                    {open && Platform.OS === "android" && (
+                        <DateTimePicker value={currentDate} mode="date" display="default" onChange={onPick} />
+                    )}
+                </>
             )}
         </View>
     );
