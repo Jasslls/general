@@ -21,6 +21,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    signInWithPopup,
+    GoogleAuthProvider,
     updateProfile,
 } from "firebase/auth";
 import { saveSession } from "../services/auth";
@@ -35,6 +37,8 @@ const IOS_CLIENT_ID =
     "575779505449-48924ju5hjqpocuisj71l4u7crndlelu.apps.googleusercontent.com";
 const ANDROID_CLIENT_ID =
     "575779505449-ov75p3nu9frkdmnc6c59of92qhif596n.apps.googleusercontent.com";
+const WEB_CLIENT_ID =
+    "575779505449-7m3bn6mt04bp7qf7eq9m7gscluonslve.apps.googleusercontent.com";
 
 const DISCOVERY = {
     authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -42,7 +46,9 @@ const DISCOVERY = {
 };
 
 function getClientId() {
-    return Platform.OS === "ios" ? IOS_CLIENT_ID : ANDROID_CLIENT_ID;
+    if (Platform.OS === "ios") return IOS_CLIENT_ID;
+    if (Platform.OS === "android") return ANDROID_CLIENT_ID;
+    return WEB_CLIENT_ID;
 }
 
 function getReverseClientId() {
@@ -71,6 +77,14 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
 
+    const showAlert = (title: string, message: string) => {
+        if (Platform.OS === "web") {
+            window.alert(`${title}\n\n${message}`);
+        } else {
+            Alert.alert(title, message);
+        }
+    };
+
     // Email/Password States
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -95,8 +109,13 @@ export default function LoginScreen() {
     }, []);
 
     const clientId = getClientId();
-    const reverseId = getReverseClientId();
-    const redirectUri = `${reverseId}:/oauth2redirect`;
+    let redirectUri: string;
+    if (Platform.OS === "web") {
+        redirectUri = AuthSession.makeRedirectUri();
+    } else {
+        const reverseId = getReverseClientId();
+        redirectUri = `${reverseId}:/oauth2redirect`;
+    }
 
     const [request, response, promptAsync] = AuthSession.useAuthRequest(
         {
@@ -117,11 +136,11 @@ export default function LoginScreen() {
                 exchangeCodeForToken(code, request.codeVerifier);
             } else {
                 setLoading(false);
-                Alert.alert("Error", "No se recibió el código de autorización.");
+                showAlert("Error", "No se recibió el código de autorización.");
             }
         } else if (response?.type === "error") {
             setLoading(false);
-            Alert.alert("Error de autenticación", response.error?.message ?? "Intenta de nuevo.");
+            showAlert("Error de autenticación", response.error?.message ?? "Intenta de nuevo.");
         } else if (response?.type === "dismiss" || response?.type === "cancel") {
             setLoading(false);
         }
@@ -167,7 +186,7 @@ export default function LoginScreen() {
             setUser(session);
         } catch (e: any) {
             console.error("Token exchange error:", e);
-            Alert.alert("Error", e?.message ?? "No se pudo iniciar sesión.");
+            showAlert("Error", e?.message ?? "No se pudo iniciar sesión.");
         } finally {
             setLoading(false);
         }
@@ -178,26 +197,35 @@ export default function LoginScreen() {
     }
 
     async function handleEmailAuth() {
+        console.log("-> handleEmailAuth started. isSignUp:", isSignUp);
+        console.log("Fields:", { email, name, passwordLength: password.length });
+        
         if (!email.trim() || !password.trim() || (isSignUp && !name.trim())) {
-            return Alert.alert("Faltan datos", "Por favor completa todos los campos.");
+            console.log("-> Faltan datos validation failed");
+            return showAlert("Faltan datos", "Por favor completa todos los campos.");
         }
 
         if (!validateEmail(email.trim())) {
-            return Alert.alert("Email inválido", "Por favor ingresa un correo electrónico válido (ej: usuario@dominio.com).");
+            console.log("-> Email validation failed:", email);
+            return showAlert("Email inválido", "Por favor ingresa un correo electrónico válido (ej: usuario@dominio.com).");
         }
 
         setLoading(true);
         try {
             let fbUser;
             if (isSignUp) {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                console.log("-> Attempting createUserWithEmailAndPassword");
+                const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
                 fbUser = userCredential.user;
-                await updateProfile(fbUser, { displayName: name });
+                console.log("-> Attempting updateProfile");
+                await updateProfile(fbUser, { displayName: name.trim() });
             } else {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log("-> Attempting signInWithEmailAndPassword");
+                const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
                 fbUser = userCredential.user;
             }
 
+            console.log("-> User authenticated, creating session data", fbUser.uid);
             const session = {
                 id: fbUser.uid,
                 name: fbUser.displayName ?? (name || "Usuario"),
@@ -206,6 +234,7 @@ export default function LoginScreen() {
             };
             await saveSession(session);
             setUser(session);
+            console.log("-> Success");
         } catch (e: any) {
             console.error("Email Auth Error:", e.code, e.message);
             let msg = "Ocurrió un error inesperado.";
@@ -238,7 +267,7 @@ export default function LoginScreen() {
                     msg = e.message || msg;
             }
 
-            Alert.alert("Error de Autenticación", msg);
+            showAlert("Error de Autenticación", msg);
         } finally {
             setLoading(false);
         }
@@ -246,6 +275,30 @@ export default function LoginScreen() {
 
     async function handleGoogleLogin() {
         setLoading(true);
+        if (Platform.OS === "web") {
+            try {
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(auth, provider);
+                const fbUser = result.user;
+
+                const session = {
+                    id: fbUser.uid,
+                    name: fbUser.displayName ?? "Usuario",
+                    email: fbUser.email ?? "",
+                    photo: fbUser.photoURL ?? null,
+                };
+                
+                await saveSession(session);
+                setUser(session);
+            } catch (e: any) {
+                console.error("Web Google Login Error:", e);
+                showAlert("Error", e?.message ?? "No se pudo iniciar sesión con Google en la web.");
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+        
         await promptAsync();
     }
 
