@@ -17,6 +17,8 @@ import type { Client, Invoice } from "../models/types";
 import { generateCollectionMessages, type GeneratedMessages, type Tone } from "../services/gemini";
 import { lightColors, useAppColors } from "../themes/colors";
 import { openWhatsApp } from "../utils/whatsapp";
+import { usePremium } from "../hooks/usePremium";
+import { PaywallModal } from "./PaywallModal";
 
 export function ReminderModal({
     visible,
@@ -24,15 +26,19 @@ export function ReminderModal({
     invoice,
     client,
     initialChannel,
+    onPremiumRequired,
 }: {
     visible: boolean;
     onClose: () => void;
     invoice: Invoice | null;
     client: Client | null;
     initialChannel?: "whatsapp" | "email";
+    onPremiumRequired?: () => void;
 }) {
     const colors = useAppColors();
     const styles = getStyles(colors);
+    const { isPremium } = usePremium();
+
 
     const [loading, setLoading] = useState(false);
     const [messages, setMessages] = useState<GeneratedMessages | null>(null);
@@ -61,8 +67,17 @@ export function ReminderModal({
 
     const fetchMessages = async () => {
         if (!client || !invoice) return;
+        // ── Premium guard ──
+        if (!isPremium) {
+            onClose(); // Close this modal first
+            setTimeout(() => {
+                onPremiumRequired?.();
+            }, 300); // Small delay for iOS modal transitions
+            return;
+        }
         setLoading(true);
         setIsIAMode(true);
+
         try {
             const result = await generateCollectionMessages(client, invoice);
             setMessages(result);
@@ -105,140 +120,140 @@ export function ReminderModal({
     };
 
     return (
+        <>
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={styles.overlay}>
                 <KeyboardAvoidingView
-                    style={{ width: "100%" }}
+                    style={{ width: "100%", maxHeight: "92%" }}
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                 >
                     <View style={styles.card}>
-                        <Text style={styles.title}>Asistente de Cobranza IA</Text>
-                        <Text style={styles.subtitle}>
-                            La IA redacta mensajes únicos analizando el nivel de mora y riesgo comercial del cliente en tiempo real.
-                        </Text>
+                        <ScrollView style={styles.scrollableContent}>
+                            <View style={styles.cardContent}>
+                                <Text style={styles.title}>Asistente de Cobranza IA</Text>
+                                <Text style={styles.subtitle}>
+                                    La IA redacta mensajes únicos analizando el nivel de mora y riesgo comercial del cliente en tiempo real.
+                                </Text>
 
-                        {/* Channel Selector (Always visible) */}
-                        <View style={{ marginBottom: 10 }}>
-                            <Text style={[styles.label, { marginBottom: 4, fontSize: 13 }]}>Enviar por:</Text>
-                            <View style={styles.channelRow}>
-                                <Pressable 
-                                    onPress={() => setChannel("whatsapp")}
-                                    style={[styles.channelBtn, channel === "whatsapp" && styles.channelBtnActive]}
-                                >
-                                    <Text style={[styles.channelText, channel === "whatsapp" && styles.channelTextActive, { fontSize: 13 }]}>📲 WhatsApp</Text>
-                                </Pressable>
-                                <Pressable 
-                                    onPress={() => setChannel("email")}
-                                    style={[styles.channelBtn, channel === "email" && styles.channelBtnActive]}
-                                >
-                                    <Text style={[styles.channelText, channel === "email" && styles.channelTextActive, { fontSize: 13 }]}>📧 Correo</Text>
-                                </Pressable>
-                            </View>
-                        </View>
+                                {/* Channel Selector (Always visible) */}
+                                <View style={{ marginBottom: 10 }}>
+                                    <Text style={[styles.label, { marginBottom: 4, fontSize: 13 }]}>Enviar por:</Text>
+                                    <View style={styles.channelRow}>
+                                        <Pressable 
+                                            onPress={() => setChannel("whatsapp")}
+                                            style={[styles.channelBtn, channel === "whatsapp" && styles.channelBtnActive]}
+                                        >
+                                            <Text style={[styles.channelText, channel === "whatsapp" && styles.channelTextActive, { fontSize: 13 }]}>📲 WhatsApp</Text>
+                                        </Pressable>
+                                        <Pressable 
+                                            onPress={() => setChannel("email")}
+                                            style={[styles.channelBtn, channel === "email" && styles.channelBtnActive]}
+                                        >
+                                            <Text style={[styles.channelText, channel === "email" && styles.channelTextActive, { fontSize: 13 }]}>📧 Correo</Text>
+                                        </Pressable>
+                                    </View>
+                                </View>
 
-                        <View>
-                        {loading ? (
-                            <View style={styles.loadingBox}>
-                                <ActivityIndicator size="large" color={colors.primary} />
-                                <Text style={styles.loadingText}>Analizando cliente y redactando...</Text>
-                            </View>
-                        ) : messages ? (
-                            <ScrollView
-                                keyboardShouldPersistTaps="handled"
-                                showsVerticalScrollIndicator={false}
-                                style={{ maxHeight: 300 }}
-                                contentContainerStyle={{ paddingBottom: 12 }}
-                            >
-                                {isIAMode && (
+                                <View>
+                                {loading ? (
+                                    <View style={styles.loadingBox}>
+                                        <ActivityIndicator size="large" color={colors.primary} />
+                                        <Text style={styles.loadingText}>Analizando cliente y redactando...</Text>
+                                    </View>
+                                ) : messages ? (
                                     <>
-                                        <View style={styles.infoBox}>
-                                            <Text style={styles.infoText}>
-                                                <Text style={{ fontWeight: "800" }}>Recomendación IA:</Text> Dado que el nivel de riesgo de {client?.name} es <Text style={{ color: client?.riskLevel === "alto" ? colors.danger : client?.riskLevel === "medio" ? "#F59E0B" : colors.success, fontWeight: "900" }}>{client?.riskLevel}</Text>, te sugiero usar el tono <Text style={{ fontWeight: "800", textTransform: "uppercase" }}>{messages.recommended}</Text>.
-                                            </Text>
-                                        </View>
+                                        {isIAMode && (
+                                            <>
+                                                <View style={styles.infoBox}>
+                                                    <Text style={styles.infoText}>
+                                                        <Text style={{ fontWeight: "800" }}>Recomendación IA:</Text> Dado que el nivel de riesgo de {client?.name} es <Text style={{ color: client?.riskLevel === "alto" ? colors.danger : client?.riskLevel === "medio" ? "#F59E0B" : colors.success, fontWeight: "900" }}>{client?.riskLevel}</Text>, te sugiero usar el tono <Text style={{ fontWeight: "800", textTransform: "uppercase" }}>{messages.recommended}</Text>.
+                                                    </Text>
+                                                </View>
 
-                                        <Text style={styles.label}>Elige un Tono:</Text>
-                                        <View style={styles.toneRow}>
-                                            {(["amigable", "formal", "urgente"] as Tone[]).map((t) => {
-                                                const active = t === selectedTone;
-                                                const isRecommended = t === messages.recommended;
-                                                const tColor = t === "amigable" ? colors.success : t === "formal" ? "#4F46E5" : colors.danger;
-                                                
-                                                return (
-                                                    <Pressable
-                                                        key={t}
-                                                        onPress={() => handleSelectTone(t)}
-                                                        style={[
-                                                            styles.toneBtn,
-                                                            {
-                                                                borderColor: active ? tColor : colors.border,
-                                                                backgroundColor: active ? tColor + "1A" : "transparent"
-                                                            }
-                                                        ]}
-                                                    >
-                                                        <Text style={[
-                                                            styles.toneText,
-                                                            { color: active ? tColor : colors.muted }
-                                                        ]}>
-                                                            {t.charAt(0).toUpperCase() + t.slice(1)}
-                                                        </Text>
-                                                        {isRecommended && (
-                                                            <View style={styles.starBadge}>
-                                                                <Text style={{ fontSize: 10 }}>⭐</Text>
-                                                            </View>
-                                                        )}
-                                                    </Pressable>
-                                                );
-                                            })}
-                                        </View>
+                                                <Text style={styles.label}>Elige un Tono:</Text>
+                                                <View style={styles.toneRow}>
+                                                    {(["amigable", "formal", "urgente"] as Tone[]).map((t) => {
+                                                        const active = t === selectedTone;
+                                                        const isRecommended = t === messages.recommended;
+                                                        const tColor = t === "amigable" ? colors.success : t === "formal" ? "#4F46E5" : colors.danger;
+                                                        
+                                                        return (
+                                                            <Pressable
+                                                                key={t}
+                                                                onPress={() => handleSelectTone(t)}
+                                                                style={[
+                                                                    styles.toneBtn,
+                                                                    {
+                                                                        borderColor: active ? tColor : colors.border,
+                                                                        backgroundColor: active ? tColor + "1A" : "transparent"
+                                                                    }
+                                                                ]}
+                                                            >
+                                                                <Text style={[
+                                                                    styles.toneText,
+                                                                    { color: active ? tColor : colors.muted }
+                                                                ]}>
+                                                                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                                                                </Text>
+                                                                {isRecommended && (
+                                                                    <View style={styles.starBadge}>
+                                                                        <Text style={{ fontSize: 10 }}>⭐</Text>
+                                                                    </View>
+                                                                )}
+                                                            </Pressable>
+                                                        );
+                                                    })}
+                                                </View>
+                                            </>
+                                        )}
+                                        
+                                        <Text style={[styles.label, { marginTop: 12 }]}>Mensaje a Enviar:</Text>
+                                        <TextInput
+                                            value={editedText}
+                                            onChangeText={setEditedText}
+                                            style={styles.textArea}
+                                            multiline
+                                            textAlignVertical="top"
+                                        />
                                     </>
+                                ) : (
+                                    <View style={{ gap: 7, paddingBottom: 10 }}>
+                                        <Pressable 
+                                            onPress={fetchMessages}
+                                            style={({ pressed }) => [styles.aiBtn, pressed && { opacity: 0.8 }]}
+                                        >
+                                            <View style={styles.standardBtnContent}>
+                                                <Text style={styles.aiBtnText}>✨ Redactar con IA (Recomendado)</Text>
+                                            </View>
+                                        </Pressable>
+
+                                        <Pressable 
+                                            onPress={() => {
+                                                if (client && invoice) {
+                                                    const defaultText = `Hola ${client.name}, te recordamos tu pago de ${invoice.amount} con fecha ${invoice.due}.`;
+                                                    setEditedText(defaultText);
+                                                    setMessages({ amigable: defaultText, formal: defaultText, urgente: defaultText, recommended: "amigable" });
+                                                    setIsIAMode(false);
+                                                }
+                                            }} 
+                                            style={({ pressed }) => [styles.genericBtn, pressed && { opacity: 0.8 }]}
+                                        >
+                                            <View style={styles.standardBtnContent}>
+                                                <Text style={styles.genericBtnText}>💬 Mensaje Estándar</Text>
+                                            </View>
+                                        </Pressable>
+
+                                        <Pressable 
+                                            onPress={onClose} 
+                                            style={({ pressed }) => [styles.genericBtn, pressed && { opacity: 0.8 }]}
+                                        >
+                                            <Text style={styles.genericBtnText}>Cancelar</Text>
+                                        </Pressable>
+                                    </View>
                                 )}
-                                
-                                <Text style={[styles.label, { marginTop: 12 }]}>Mensaje a Enviar:</Text>
-                                <TextInput
-                                    value={editedText}
-                                    onChangeText={setEditedText}
-                                    style={styles.textArea}
-                                    multiline
-                                    textAlignVertical="top"
-                                />
-                            </ScrollView>
-                        ) : (
-                            <View style={{ gap: 7, paddingBottom: 10 }}>
-                                <Pressable 
-                                    onPress={fetchMessages}
-                                    style={({ pressed }) => [styles.aiBtn, pressed && { opacity: 0.8 }]}
-                                >
-                                    <View style={styles.standardBtnContent}>
-                                        <Text style={styles.aiBtnText}>✨ Redactar con IA (Recomendado)</Text>
-                                    </View>
-                                </Pressable>
-
-                                <Pressable 
-                                    onPress={() => {
-                                        if (client && invoice) {
-                                            const defaultText = `Hola ${client.name}, te recordamos tu pago de ${invoice.amount} con fecha ${invoice.due}.`;
-                                            setEditedText(defaultText);
-                                            setMessages({ amigable: defaultText, formal: defaultText, urgente: defaultText, recommended: "amigable" });
-                                            setIsIAMode(false);
-                                        }
-                                    }} 
-                                    style={({ pressed }) => [styles.genericBtn, pressed && { opacity: 0.8 }]}
-                                >
-                                    <View style={styles.standardBtnContent}>
-                                        <Text style={styles.genericBtnText}>💬 Mensaje Estándar</Text>
-                                    </View>
-                                </Pressable>
-
-                                <Pressable 
-                                    onPress={onClose} 
-                                    style={({ pressed }) => [styles.genericBtn, pressed && { opacity: 0.8 }]}
-                                >
-                                    <Text style={styles.genericBtnText}>Cancelar</Text>
-                                </Pressable>
+                                </View>
                             </View>
-                        )}
-                        </View>
+                        </ScrollView>
 
                         {messages && (
                             <View style={styles.footer}>
@@ -261,18 +276,27 @@ export function ReminderModal({
                 </KeyboardAvoidingView>
             </View>
         </Modal>
+    </>
     );
 }
+
 
 const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", padding: 16 },
     card: { 
         backgroundColor: colors.card, 
         borderRadius: 16, 
+        overflow: "hidden",
+        maxHeight: "92%",
+        flexShrink: 1,
+    },
+    scrollableContent: {
+        flexShrink: 1,
+    },
+    cardContent: {
         paddingTop: 12,
-        paddingBottom: 30, // Even more space at bottom
-        paddingHorizontal: 16, 
-        maxHeight: "90%",
+        paddingBottom: 8,
+        paddingHorizontal: 16,
     },
     title: { fontSize: 17, fontWeight: "900", color: colors.text, marginBottom: 1, textAlign: "center" },
     subtitle: { fontSize: 12, color: colors.muted, textAlign: "center", marginBottom: 4, paddingHorizontal: 10 },
@@ -346,8 +370,12 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     footer: {
         flexDirection: "row",
         gap: 12,
-        paddingTop: 16,
-        marginTop: 4,
+        paddingTop: 12,
+        paddingBottom: 16,
+        paddingHorizontal: 16,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        marginTop: 8,
     },
     cancelText: { color: colors.text, fontWeight: "800", fontSize: 15 },
     saveText: { color: "#fff", fontWeight: "900", fontSize: 15 },

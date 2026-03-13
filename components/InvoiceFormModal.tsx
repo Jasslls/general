@@ -16,6 +16,9 @@ import type { Client, Invoice, InvoiceRecurrence, InvoiceStatus } from "../model
 import { setItem } from "../services/storage";
 import { lightColors, useAppColors } from "../themes/colors";
 import { DateField } from "./DateField";
+import { usePremium } from "../hooks/usePremium";
+import { PaywallModal } from "./PaywallModal";
+
 
 type Form = {
     clientId: string;
@@ -51,6 +54,9 @@ export function InvoiceFormModal({
 }) {
     const colors = useAppColors();
     const styles = getStyles(colors);
+    const { isPremium } = usePremium();
+    const [paywallVisible, setPaywallVisible] = useState(false);
+
     const [form, setForm] = useState<Form>({
         clientId: "",
         desc: "",
@@ -99,6 +105,11 @@ export function InvoiceFormModal({
     );
 
     function set<K extends keyof Form>(k: K, v: Form[K]) {
+        if (k === "recurrence" && v !== "none" && !isPremium) {
+            setPaywallVisible(true);
+            return;
+        }
+
         setForm((p) => {
             const next = { ...p, [k]: v };
             
@@ -146,6 +157,7 @@ export function InvoiceFormModal({
     }
 
     return (
+        <>
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={styles.overlay}>
                 <KeyboardAvoidingView
@@ -317,6 +329,13 @@ export function InvoiceFormModal({
                 </KeyboardAvoidingView>
             </View>
         </Modal>
+
+        <PaywallModal 
+            visible={paywallVisible} 
+            onClose={() => setPaywallVisible(false)} 
+            onActivated={() => setPaywallVisible(false)}
+        />
+        </>
     );
 }
 

@@ -16,7 +16,9 @@ import * as ImagePicker from "expo-image-picker";
 
 import { InvoiceCard } from "../../components/InvoiceCard";
 import { InvoiceFormModal } from "../../components/InvoiceFormModal";
+import { PaywallModal } from "../../components/PaywallModal";
 import { ReminderModal } from "../../components/ReminderModal";
+
 import type { Client, Invoice, InvoiceStatus } from "../../models/types";
 import {
     addInvoice,
@@ -31,7 +33,7 @@ import { setItem } from "../../services/storage";
 import { syncBusinessIntelligence } from "../../services/sync";
 import { lightColors, useAppColors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
-import { useAuth } from "../_layout";
+import { useAuth } from "../../context/AuthContext";
 
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
 
@@ -111,6 +113,8 @@ export default function FacturasScreen() {
     const [reminderModalOpen, setReminderModalOpen] = useState(false);
     const [reminderClient, setReminderClient] = useState<Client | null>(null);
     const [reminderInvoice, setReminderInvoice] = useState<Invoice | null>(null);
+    const [paywallVisible, setPaywallVisible] = useState(false);
+
 
     async function loadAll() {
         if (!uid) return;
@@ -412,7 +416,15 @@ export default function FacturasScreen() {
                     onClose={() => setReminderModalOpen(false)}
                     client={reminderClient}
                     invoice={reminderInvoice}
+                    onPremiumRequired={() => setPaywallVisible(true)}
                 />
+
+                <PaywallModal
+                    visible={paywallVisible}
+                    onClose={() => setPaywallVisible(false)}
+                    onActivated={() => setPaywallVisible(false)}
+                />
+
             </ScrollView>
         </SafeAreaView>
     );

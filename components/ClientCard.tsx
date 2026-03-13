@@ -1,7 +1,10 @@
 import { FontAwesome } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { lightColors, useAppColors } from "../themes/colors";
+import { usePremium } from "../hooks/usePremium";
+import { PaywallModal } from "./PaywallModal";
+
 
 type Props = {
     name: string;
@@ -18,7 +21,11 @@ type Props = {
 export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit, onDelete, onWhatsApp }: Props) {
     const colors = useAppColors();
     const styles = getStyles(colors);
+    const { isPremium } = usePremium();
+    const [paywallVisible, setPaywallVisible] = useState(false);
+
     return (
+        <>
         <View style={styles.card}>
             <View style={styles.topRow}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -26,17 +33,22 @@ export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit
                         <Text style={styles.iconText}>🏢</Text>
                     </View>
                     {riskLevel && ["bajo", "medio", "alto"].includes(riskLevel) && (
-                        <View style={[
-                            styles.riskBadge, 
-                            { backgroundColor: riskLevel === "alto" ? colors.danger + "20" : riskLevel === "medio" ? "#F59E0B20" : colors.success + "20" }
-                        ]}>
+                        <Pressable 
+                            onPress={() => !isPremium && setPaywallVisible(true)}
+                            style={[
+                                styles.riskBadge, 
+                                { backgroundColor: riskLevel === "alto" ? colors.danger + "20" : riskLevel === "medio" ? "#F59E0B20" : colors.success + "20" },
+                                !isPremium && { opacity: 0.5 }
+                            ]}
+                        >
                             <Text style={[
                                 styles.riskText, 
-                                { color: riskLevel === "alto" ? colors.danger : riskLevel === "medio" ? "#F59E0B" : colors.success }
+                                { color: riskLevel === "alto" ? colors.danger : riskLevel === "medio" ? "#F59E0B" : colors.success },
+                                !isPremium && { opacity: 0.2 } // Blurry effect substitute
                             ]}>
-                                Riesgo {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
+                                {isPremium ? `Riesgo ${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}` : "Riesgo 🔒"}
                             </Text>
-                        </View>
+                        </Pressable>
                     )}
                 </View>
 
@@ -66,6 +78,13 @@ export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit
 
             <Text style={styles.rfc}>RFC: {rfc}</Text>
         </View>
+
+        <PaywallModal 
+            visible={paywallVisible} 
+            onClose={() => setPaywallVisible(false)} 
+            onActivated={() => setPaywallVisible(false)}
+        />
+        </>
     );
 }
 

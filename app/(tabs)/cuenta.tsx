@@ -21,7 +21,10 @@ import { BusinessSettings, saveSession, updateAuthDisplayName } from "../../serv
 import { auth } from "../../services/firebase";
 import { updateUserProfile, updateUserSettings } from "../../services/firestore";
 import { lightColors, useThemeColors } from "../../themes/colors";
-import { useAuth } from "../_layout";
+import { useAuth } from "../../context/AuthContext";
+import { usePremium } from "../../hooks/usePremium";
+import { PaywallModal } from "../../components/PaywallModal";
+
 
 function getGreeting() {
     const hour = new Date().getHours();
@@ -32,8 +35,10 @@ function getGreeting() {
 
 export default function CuentaScreen() {
     const { user, signOut, setUser } = useAuth();
+    const { status, isPremium, cancelPremium } = usePremium();
     const colors = useThemeColors(user?.settings?.theme);
     const styles = getStyles(colors);
+
 
     const [settings, setSettings] = useState<BusinessSettings>({
         currency: "L",
@@ -54,6 +59,11 @@ export default function CuentaScreen() {
 
     // Legal Modal state
     const [legalVisible, setLegalVisible] = useState(false);
+
+    // Plan Management state
+    const [planModalVisible, setPlanModalVisible] = useState(false);
+    const [paywallVisible, setPaywallVisible] = useState(false);
+
 
     useEffect(() => {
         if (user?.settings) {
@@ -141,7 +151,34 @@ export default function CuentaScreen() {
         }
     };
 
+    const handleCancelPremium = async () => {
+        if (!user?.id) return;
+        
+        const run = async () => {
+            try {
+                setSaving(true);
+                await cancelPremium();
+                Alert.alert("Éxito", "Tu plan ha sido cancelado y has vuelto al plan gratuito.");
+                setPlanModalVisible(false);
+            } catch (error) {
+                Alert.alert("Error", "No se pudo cancelar el plan.");
+            } finally {
+                setSaving(false);
+            }
+        };
+
+        Alert.alert(
+            "Cancelar suscripción",
+            "¿Estás seguro que deseas cancelar tu suscripción premium y volver al plan gratuito?",
+            [
+                { text: "No, mantener", style: "cancel" },
+                { text: "Sí, cancelar", style: "destructive", onPress: run }
+            ]
+        );
+    };
+
     const renderOption = (icon: any, title: string, subtitle?: string, onPress?: () => void) => (
+
         <Pressable style={styles.optionRow} onPress={onPress}>
             <View style={styles.optionIconContainer}>
                 <Ionicons name={icon} size={20} color={colors.text} />
@@ -192,9 +229,11 @@ export default function CuentaScreen() {
                 <Text style={styles.sectionHeader}>Mi cuenta</Text>
                 <View style={styles.sectionBlock}>
                     {renderOption("person-outline", "Mi perfil", "Gestionar nombre y contacto", () => handleEditPress("profile"))}
+                    {renderOption("card-outline", "Plan de suscripción", isPremium ? `Plan: ${status?.plan?.toUpperCase()}` : "Plan: Gratuito", () => setPlanModalVisible(true))}
                     {renderOption("color-palette-outline", "Apariencia", `Actual: ${getThemeName(settings.theme)}`, handleThemePress)}
                     {renderOption("shield-checkmark-outline", "Restablecer contraseña", "Enviar correo de recuperación", handleSecurityPress)}
                 </View>
+
 
                 {/* Sección: Herramientas */}
 
@@ -349,6 +388,72 @@ export default function CuentaScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Modal de Plan de Suscripción */}
+            <Modal visible={planModalVisible} transparent animationType="slide" onRequestClose={() => setPlanModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.planHeader}>
+                            <Text style={styles.modalTitle}>Tu Plan Actual</Text>
+                            <Pressable onPress={() => setPlanModalVisible(false)}>
+                                <Ionicons name="close" size={24} color={colors.text} />
+                            </Pressable>
+                        </View>
+
+                        <View style={[styles.planStatusCard, { backgroundColor: isPremium ? colors.primary + "10" : colors.border + "40" }]}>
+                            <View style={styles.planStatusInfo}>
+                                <Text style={[styles.planStatusLabel, { color: isPremium ? colors.primary : colors.muted }]}>
+                                    {isPremium ? "PREMIUM ACTIVO 👑" : "PLAN GRATUITO"}
+                                </Text>
+                                <Text style={styles.planNameText}>
+                                    {status?.plan === "trial" ? "Prueba Gratuita (24h)" : 
+                                     status?.plan === "monthly" ? "Suscripción Mensual" :
+                                     status?.plan === "annual" ? "Suscripción Anual" : "PagoFijo Básico"}
+                                </Text>
+                            </View>
+                            {isPremium && status?.expiresAt && (
+                                <View style={styles.expiryRow}>
+                                    <Ionicons name="time-outline" size={16} color={colors.muted} />
+                                    <Text style={styles.expiryText}>Vence: {new Date(status.expiresAt).toLocaleDateString()}</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        <Text style={styles.planDescText}>
+                            {isPremium 
+                                ? "Tienes acceso ilimitado a Fijito IA, reportes avanzados, generación de mensajes y más."
+                                : "Actualiza a Premium para desbloquear el poder de la IA en tu cobranza."}
+                        </Text>
+
+                        <View style={styles.planActions}>
+                            {isPremium ? (
+                                <Pressable 
+                                    style={[styles.modalBtnCancel, { flex: 1, backgroundColor: colors.danger + "10", borderColor: colors.danger, borderWidth: 1 }]} 
+                                    onPress={handleCancelPremium}
+                                    disabled={saving}
+                                >
+                                    <Text style={{ color: colors.danger, fontWeight: "bold" }}>Cancelar Suscripción</Text>
+                                </Pressable>
+                            ) : (
+                                <Pressable 
+                                    style={[styles.modalBtnSave, { flex: 1 }]} 
+                                    onPress={() => {
+                                        setPlanModalVisible(false);
+                                        setPaywallVisible(true);
+                                    }}
+                                >
+                                    <Text style={styles.modalBtnSaveText}>Mejorar a Premium</Text>
+                                </Pressable>
+                            )}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            <PaywallModal 
+                visible={paywallVisible} 
+                onClose={() => setPaywallVisible(false)} 
+            />
 
             {/* Modal de Términos Legales */}
             <Modal visible={legalVisible} animationType="slide" presentationStyle="pageSheet">
@@ -505,4 +610,54 @@ const getStyles = (c: typeof lightColors) => StyleSheet.create({
     legalModalCloseBtn: { padding: 4 },
     legalModalContent: { flex: 1, padding: 20 },
     legalText: { fontSize: 15, color: c.muted, lineHeight: 24 },
+
+    // Plan Management Styles
+    planHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 20,
+    },
+    planStatusCard: {
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "transparent",
+    },
+    planStatusInfo: {
+        marginBottom: 8,
+    },
+    planStatusLabel: {
+        fontSize: 11,
+        fontWeight: "900",
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    planNameText: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: c.text,
+    },
+    expiryRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        marginTop: 4,
+    },
+    expiryText: {
+        fontSize: 13,
+        color: c.muted,
+        fontWeight: "600",
+    },
+    planDescText: {
+        fontSize: 14,
+        color: c.muted,
+        lineHeight: 20,
+        marginBottom: 24,
+    },
+    planActions: {
+        flexDirection: "row",
+        gap: 12,
+    },
 });

@@ -13,8 +13,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { useAuth } from "./_layout";
+import { useAuth } from "../context/AuthContext";
+import { usePremium } from "../hooks/usePremium";
+import { PaywallModal } from "../components/PaywallModal";
 import type { Client, Invoice } from "../models/types";
+
 import { getAllInvoices, getClients } from "../services/firestore";
 import {
     type ReportPeriod,
@@ -44,6 +47,8 @@ export default function ReportesScreen() {
     const styles = getStyles(colors);
     const { user } = useAuth();
     const uid = user?.id;
+    const { isPremium, loading: premiumLoading } = usePremium();
+    const [paywallVisible, setPaywallVisible] = useState(false);
 
     const [clients, setClients] = useState<Client[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -77,6 +82,39 @@ export default function ReportesScreen() {
         const text = buildShareText(period, rate, collected, pending, avgDays, topPayers, topDebtors);
         Share.share({ message: text });
     };
+
+    if (!premiumLoading && !isPremium) {
+        return (
+            <SafeAreaView style={styles.safe} edges={["top"]}>
+                <View style={styles.header}>
+                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                        <Ionicons name="chevron-back" size={24} color={colors.text} />
+                    </Pressable>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.h1}>Reportes</Text>
+                        <Text style={styles.sub}>Análisis de tu cobranza</Text>
+                    </View>
+                </View>
+
+                <View style={styles.lockContent}>
+                    <Ionicons name="lock-closed" size={64} color={colors.primary} />
+                    <Text style={styles.lockTitle}>Reportes Avanzados</Text>
+                    <Text style={styles.lockDesc}>
+                        Visualiza tendencias, mejores pagadores y deudores críticos. Toma mejores decisiones con datos reales.
+                    </Text>
+                    <Pressable onPress={() => setPaywallVisible(true)} style={styles.unlockBtn}>
+                        <Text style={styles.unlockText}>👑 Desbloquear Reportes</Text>
+                    </Pressable>
+                </View>
+
+                <PaywallModal 
+                    visible={paywallVisible} 
+                    onClose={() => setPaywallVisible(false)} 
+                    onActivated={() => setPaywallVisible(false)}
+                />
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -237,4 +275,11 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     rankText: { fontWeight: "900", fontSize: 14 },
     listName: { flex: 1, fontSize: 14, fontWeight: "700", color: colors.text },
     listAmount: { fontSize: 14, fontWeight: "900" },
+
+    // ── Lock Screen ──
+    lockContent: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 },
+    lockTitle: { fontSize: 22, fontWeight: "900", color: colors.text, textAlign: "center" },
+    lockDesc: { fontSize: 14, color: colors.muted, textAlign: "center", fontWeight: "600", lineHeight: 20 },
+    unlockBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10 },
+    unlockText: { color: "#fff", fontWeight: "900", fontSize: 16 },
 });

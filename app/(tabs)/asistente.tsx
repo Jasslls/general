@@ -16,7 +16,9 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ReminderModal } from "../../components/ReminderModal";
-import { useAuth } from "../_layout";
+import { PaywallModal } from "../../components/PaywallModal";
+import { usePremium } from "../../hooks/usePremium";
+import { useAuth } from "../../context/AuthContext";
 import type { Client, Invoice } from "../../models/types";
 import { getAllInvoices, getClients } from "../../services/firestore";
 import {
@@ -118,13 +120,15 @@ const QUICK_QUESTIONS = [
     "¿Cuánto dinero está vencido?",
     "¿Quién me debe más?",
     "¿Qué facturas vencen pronto?",
+    "Ver mis reportes de cobranza",
     "¿Qué mensaje le envío al cliente que más debe?",
+    "Quiero crear una nueva factura",
 ];
 
 interface ChatAction {
-    type: "collect" | "navigate";
+    type: "collect" | "navigate" | "danger";
     label: string;
-    payload: any; // client/invoice for collect, { route: string } for navigate
+    payload: any;
 }
 
 interface MessageEntry {
@@ -137,6 +141,8 @@ export default function AsistenteScreen() {
     const styles = getStyles(colors);
     const { user } = useAuth();
     const uid = user?.id;
+    const { isPremium, loading: premiumLoading } = usePremium();
+    const [paywallVisible, setPaywallVisible] = useState(false);
 
     const [entries, setEntries] = useState<MessageEntry[]>([]);
     const [input, setInput] = useState("");
@@ -180,6 +186,13 @@ export default function AsistenteScreen() {
         } else if (action.type === "navigate") {
             const { route, params } = action.payload;
             router.push({ pathname: route, params });
+        } else if (action.type === "danger") {
+            // Danger = destructive confirmation
+            const { message, onConfirm } = action.payload;
+            Alert.alert("Confirmar", message, [
+                { text: "Cancelar", style: "cancel" },
+                { text: "Eliminar", style: "destructive", onPress: onConfirm },
+            ]);
         }
     };
 
@@ -196,7 +209,7 @@ export default function AsistenteScreen() {
             // Detect specialized intents
             const actions: ChatAction[] = [];
             
-            // 1. Collection Intent
+            // 1. Collection Intent (notify a specific client)
             const mentionedClient = detectMentionedClient(reply, clients);
             const notifyIntent = /mensaje|notific|envi[ao]|record[ao]|avis[ao]|cobre|cobra|cobro|whatsapp/i.test(text);
             const actionInvoice = mentionedClient ? getMostUrgentInvoice(mentionedClient.id, invoices) : null;
@@ -208,21 +221,60 @@ export default function AsistenteScreen() {
                 });
             }
 
-            // 2. Reports Intent
-            if (/reporte|estadistica|grafic|analisis|cuanto debo|cuanto me deben/i.test(text + " " + reply)) {
+            // 2. View/Edit a specific client
+            if (mentionedClient && /editar|ver|detalle|perfil|informaci[oó]n|cliente/i.test(text + " " + reply)) {
                 actions.push({
                     type: "navigate",
-                    label: "📊 Ver Reportes",
+                    label: `👤 Ver a ${mentionedClient.name}`,
+                    payload: { route: "/(tabs)/clientes", params: { highlightId: mentionedClient.id } }
+                });
+            }
+
+            // 3. Delete client intent
+            if (mentionedClient && /elimin|borrar|quitar|remov/i.test(text)) {
+                actions.push({
+                    type: "danger",
+                    label: `🗑 Eliminar cliente`,
+                    payload: {
+                        message: `¿Eliminar a ${mentionedClient.name}? Esta acción no se puede deshacer.`,
+                        onConfirm: () => router.push({ pathname: "/(tabs)/clientes", params: { deleteId: mentionedClient.id } })
+                    }
+                });
+            }
+
+            // 4. Reports Intent
+            if (/reporte|estadistica|gr[aá]fic|analisis|cuanto debo|cuanto me deben|resumen|flujo|ingresos|facturaci[oó]n/i.test(text + " " + reply)) {
+                actions.push({
+                    type: "navigate",
+                    label: "📊 Abrir Reportes",
                     payload: { route: "/reportes" }
                 });
             }
 
-            // 3. Overdue Invoices Intent
-            if (/vencid|atraso|mora|deudores/i.test(text + " " + reply)) {
+            // 5. Overdue / Priority Invoices Intent
+            if (/vencid|atraso|mora|deudores|prioridad|urgen/i.test(text + " " + reply)) {
                 actions.push({
                     type: "navigate",
                     label: "📑 Ver Facturas Vencidas",
-                    payload: { route: "/facturas", params: { filter: "Vencida" } }
+                    payload: { route: "/(tabs)/facturas", params: { filter: "Vencida" } }
+                });
+            }
+
+            // 6. New invoice intent
+            if (/crear|nueva factura|agregar factura|registrar factura|factura para/i.test(text)) {
+                actions.push({
+                    type: "navigate",
+                    label: "➕ Nueva Factura",
+                    payload: { route: "/(tabs)/facturas" }
+                });
+            }
+
+            // 7. New client intent
+            if (/crear|nuevo cliente|agregar cliente|registrar cliente/i.test(text)) {
+                actions.push({
+                    type: "navigate",
+                    label: "🧑‍💼 Nuevo Cliente",
+                    payload: { route: "/(tabs)/clientes", params: { openNew: "1" } }
                 });
             }
 
@@ -244,6 +296,54 @@ export default function AsistenteScreen() {
         setModalInvoice(invoice);
         setModalVisible(true);
     };
+
+    // ── Premium lock screen ──────────────────────────────────────────
+    if (!premiumLoading && !isPremium) {
+        return (
+            <SafeAreaView style={styles.safe} edges={["top"]}>
+                {/* Header still shows for navigation context */}
+                <View style={styles.header}>
+                    <View style={styles.avatarBox}>
+                        <Text style={styles.avatarText}>✦</Text>
+                    </View>
+                    <View>
+                        <Text style={styles.h1}>Fijito</Text>
+                        <Text style={styles.sub}>Asistente Financiero IA</Text>
+                    </View>
+                </View>
+
+                <View style={styles.lockScreen}>
+                    <Text style={styles.lockCrown}>👑</Text>
+                    <Text style={styles.lockTitle}>Fijito es Premium</Text>
+                    <Text style={styles.lockDesc}>
+                        Tu asistente financiero con inteligencia artificial. Responde preguntas, sugiere cobros y envía mensajes inteligentes.
+                    </Text>
+
+                    <View style={styles.lockBenefits}>
+                        {["Consultas en lenguaje natural", "Generación de mensajes IA", "Acciones directas desde el chat", "Sugerencias de cobranza"].map((b) => (
+                            <View key={b} style={styles.lockBenefitRow}>
+                                <Text style={styles.lockCheck}>✓</Text>
+                                <Text style={styles.lockBenefitText}>{b}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <Pressable
+                        onPress={() => setPaywallVisible(true)}
+                        style={({ pressed }) => [styles.lockCTA, pressed && { opacity: 0.85 }]}
+                    >
+                        <Text style={styles.lockCTAText}>👑 Desbloquear Fijito</Text>
+                    </Pressable>
+                </View>
+
+                <PaywallModal
+                    visible={paywallVisible}
+                    onClose={() => setPaywallVisible(false)}
+                    onActivated={() => setPaywallVisible(false)}
+                />
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -314,10 +414,15 @@ export default function AsistenteScreen() {
                                             style={({ pressed }) => [
                                                 styles.actionChip, 
                                                 act.type === "navigate" && styles.navChip,
+                                                act.type === "danger" && styles.dangerChip,
                                                 pressed && { opacity: 0.75 }
                                             ]}
                                         >
-                                            <Text style={[styles.actionChipText, act.type === "navigate" && styles.navChipText]}>
+                                            <Text style={[
+                                                styles.actionChipText, 
+                                                act.type === "navigate" && styles.navChipText,
+                                                act.type === "danger" && styles.dangerChipText,
+                                            ]}>
                                                 {act.label}
                                             </Text>
                                         </Pressable>
@@ -371,7 +476,9 @@ export default function AsistenteScreen() {
                 onClose={() => setModalVisible(false)}
                 client={modalClient}
                 invoice={modalInvoice}
+                onPremiumRequired={() => setPaywallVisible(true)}
             />
+
         </SafeAreaView>
     );
 }
@@ -427,6 +534,11 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
         borderColor: colors.primary,
     },
     navChipText: { color: colors.primary },
+    dangerChip: {
+        backgroundColor: colors.danger + "15",
+        borderColor: colors.danger,
+    },
+    dangerChipText: { color: colors.danger },
 
     inputBar: {
         flexDirection: "row", alignItems: "flex-end", gap: 10,
@@ -441,4 +553,30 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     },
     sendBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
     sendIcon: { color: "#fff", fontSize: 18, fontWeight: "900" },
+
+    // ── Premium Lock Screen ──
+    lockScreen: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 28,
+        gap: 16,
+    },
+    lockCrown: { fontSize: 64 },
+    lockTitle: { fontSize: 22, fontWeight: "900", color: colors.text, textAlign: "center" },
+    lockDesc: { fontSize: 14, color: colors.muted, textAlign: "center", lineHeight: 22, fontWeight: "600" },
+    lockBenefits: { width: "100%", gap: 10, marginTop: 4 },
+    lockBenefitRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+    lockCheck: { color: "#22c55e", fontWeight: "900", fontSize: 18, width: 24 },
+    lockBenefitText: { color: colors.text, fontWeight: "600", fontSize: 14 },
+    lockCTA: {
+        backgroundColor: colors.primary,
+        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        alignItems: "center",
+        marginTop: 8,
+        width: "100%",
+    },
+    lockCTAText: { color: "#fff", fontWeight: "900", fontSize: 16 },
 });

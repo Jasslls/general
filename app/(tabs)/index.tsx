@@ -1,13 +1,15 @@
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useAuth } from "../_layout";
+import { useAuth } from "../../context/AuthContext";
+import { usePremium } from "../../hooks/usePremium";
 
 import { CashFlowBarCard, InvoiceStatusPieCard } from "../../components/Charts";
 import { OverduePaymentsCard, UpcomingPaymentsCard } from "../../components/DashboardLists";
 import { InvoiceRow } from "../../components/InvoiceRow";
+import { PaywallModal } from "../../components/PaywallModal";
 import { PriorityCollectionCard } from "../../components/PriorityCollectionCard";
 import { StatCard } from "../../components/StatCard";
 import type { Client, Invoice } from "../../models/types";
@@ -53,8 +55,10 @@ export default function DashboardScreen() {
   const { user } = useAuth();
   const uid = user?.id;
   const { width } = useWindowDimensions();
-  const isWide = width >= 900; // en web / tablet grande: 2 columnas fijas
+  const isWide = width >= 900;
   const colStyle = isWide ? styles.col2 : styles.col1;
+  const { isPremium } = usePremium();
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -160,10 +164,59 @@ export default function DashboardScreen() {
           <StatCard title="Flujo Proyectado" value={money(kpis.projected)} color={colors.success} />
         </View>
 
+        {/* ── Premium Teaser (only when not premium) ── */}
+        {!isPremium && (
+          <Pressable
+            onPress={() => setPaywallVisible(true)}
+            style={styles.premiumCard}
+          >
+            <View style={styles.premiumCardHeader}>
+              <View>
+                <Text style={styles.premiumCardTitle}>🚀 Funciones Inteligentes</Text>
+                <Text style={styles.premiumCardSub}>Herramientas pro para escalar tu negocio</Text>
+              </View>
+              <View style={styles.premiumBadge}>
+                <Text style={styles.premiumBadgeText}>👑 Premium</Text>
+              </View>
+            </View>
+
+            {/* Expanded 2x2 Grid preview */}
+            <View style={styles.premiumPreviewGrid}>
+              <View style={styles.premiumPreviewCard}>
+                <Text style={styles.premiumPreviewLabel}>Cliente que más debe</Text>
+                <View style={styles.blurBlock} />
+                <View style={[styles.blurBlock, { width: "60%" }]} />
+              </View>
+              <View style={styles.premiumPreviewCard}>
+                <Text style={styles.premiumPreviewLabel}>Ganancias del mes</Text>
+                <View style={[styles.blurBlock, { backgroundColor: colors.success + "60" }]} />
+                <View style={[styles.blurBlock, { width: "55%", backgroundColor: colors.success + "40" }]} />
+              </View>
+              <View style={styles.premiumPreviewCard}>
+                <Text style={styles.premiumPreviewLabel}>Asistente inteligente Fijito </Text>
+                <View style={[styles.blurBlock, { backgroundColor: colors.primary + "30" }]} />
+                <View style={[styles.blurBlock, { width: "70%", backgroundColor: colors.primary + "20" }]} />
+              </View>
+              <View style={styles.premiumPreviewCard}>
+                <Text style={styles.premiumPreviewLabel}>Notificaciones generadas con IA</Text>
+                <View style={[styles.blurBlock, { backgroundColor: colors.warning + "30" }]} />
+                <View style={[styles.blurBlock, { width: "45%", backgroundColor: colors.warning + "20" }]} />
+              </View>
+            </View>
+          </Pressable>
+        )}
+
         {/* Priority Collection Widget */}
         {priorityItems.length > 0 && (
-          <PriorityCollectionCard items={priorityItems} onSetSearch={() => {}} />
+          <PriorityCollectionCard items={priorityItems} onSetSearch={() => { }} />
         )}
+
+        <PaywallModal
+          visible={paywallVisible}
+          onClose={() => setPaywallVisible(false)}
+          onActivated={() => setPaywallVisible(false)}
+        />
+
 
         {/* ✅ GRID como Figma: 2 arriba (charts) + 2 abajo (listas) */}
         <View style={styles.grid}>
@@ -232,6 +285,61 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
   sectionHeader: { marginTop: 16, marginBottom: 8 },
   sectionTitle: { fontSize: 16, fontWeight: "800", color: colors.text },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+
+  // ── Premium Teaser ──
+  premiumCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
+  },
+  premiumCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  premiumCardTitle: { fontSize: 15, fontWeight: "900", color: colors.text },
+  premiumCardSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  premiumBadge: {
+    backgroundColor: "#1e3a8a",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  premiumBadgeText: { color: "#fff", fontSize: 12, fontWeight: "900" },
+  premiumPreviewGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 8
+  },
+  premiumPreviewCard: {
+    width: "48%", // For 2 columns
+    flexGrow: 1,
+    backgroundColor: colors.bg,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  premiumPreviewLabel: { fontSize: 11, fontWeight: "800", color: colors.muted, marginBottom: 2 },
+  blurBlock: {
+    height: 12,
+    width: "80%",
+    backgroundColor: colors.border,
+    borderRadius: 6,
+    opacity: 0.7,
+  },
+
+  premiumCTA: {
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  premiumCTAText: { color: colors.primary, fontWeight: "800", fontSize: 14, textDecorationLine: "underline" },
 });
 
 

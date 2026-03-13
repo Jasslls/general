@@ -1,5 +1,5 @@
 import { useColorScheme } from 'react-native';
-import { useAuth } from '../app/_layout';
+import { useAuth } from '../context/AuthContext';
 
 export const lightColors = {
   bg: "#F8FAFC",

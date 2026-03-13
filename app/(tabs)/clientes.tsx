@@ -27,7 +27,7 @@ import {
 import { getItemNullable, setItem } from "../../services/storage";
 import { lightColors, useAppColors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
-import { useAuth } from "../_layout";
+import { useAuth } from "../../context/AuthContext";
 
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
 

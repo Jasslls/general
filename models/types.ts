@@ -45,3 +45,12 @@ export type Activity = {
     due?: string;      // YYYY-MM-DD
     proofUri?: string; // ✅ Nuevo
 };
+// ─── Premium ─────────────────────────────────────────────────────────────────
+export type PremiumPlan = "none" | "trial" | "monthly" | "annual";
+
+export interface PremiumStatus {
+    plan: PremiumPlan;
+    activatedAt: string | null;
+    expiresAt: string | null;
+    isActive: boolean;
+}

@@ -27,7 +27,7 @@ import {
 } from "firebase/auth";
 import { saveSession } from "../services/auth";
 import { auth, signInWithGoogleToken } from "../services/firebase";
-import { useAuth } from "./_layout";
+import { useAuth } from "../context/AuthContext";
 
 // Allows expo-web-browser to complete auth sessions on reload
 WebBrowser.maybeCompleteAuthSession();

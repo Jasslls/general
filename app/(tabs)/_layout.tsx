@@ -2,12 +2,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 import React from "react";
+import { View, Text } from "react-native";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { useAppColors } from "../../themes/colors";
+import { usePremium } from "../../hooks/usePremium";
+
 
 export default function TabLayout() {
   const appColors = useAppColors();
+  const { isPremium } = usePremium();
+
 
   return (
     <Tabs
@@ -59,6 +64,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="sparkles-outline" size={size ?? 26} color={color} />
           ),
+
         }}
       />
 
