@@ -8,9 +8,11 @@ import { useAuth } from "../_layout";
 import { CashFlowBarCard, InvoiceStatusPieCard } from "../../components/Charts";
 import { OverduePaymentsCard, UpcomingPaymentsCard } from "../../components/DashboardLists";
 import { InvoiceRow } from "../../components/InvoiceRow";
+import { PriorityCollectionCard } from "../../components/PriorityCollectionCard";
 import { StatCard } from "../../components/StatCard";
 import type { Client, Invoice } from "../../models/types";
 import { getAllInvoices, getClients } from "../../services/firestore";
+import { getPriorityRanking } from "../../services/riskEngine";
 import { lightColors, useAppColors } from "../../themes/colors";
 
 function money(n: number) {
@@ -101,6 +103,8 @@ export default function DashboardScreen() {
     return m;
   }, [clients]);
 
+  const priorityItems = useMemo(() => getPriorityRanking(invoices, clientById, 5), [invoices, clientById]);
+
   const todayKey = useMemo(() => toDayKeyLocal(new Date()), []);
 
   const kpis = useMemo(() => {
@@ -155,6 +159,11 @@ export default function DashboardScreen() {
           <StatCard title="Pendiente Total" value={money(kpis.pendingTotal)} color={colors.primary} />
           <StatCard title="Flujo Proyectado" value={money(kpis.projected)} color={colors.success} />
         </View>
+
+        {/* Priority Collection Widget */}
+        {priorityItems.length > 0 && (
+          <PriorityCollectionCard items={priorityItems} onSetSearch={() => {}} />
+        )}
 
         {/* ✅ GRID como Figma: 2 arriba (charts) + 2 abajo (listas) */}
         <View style={styles.grid}>

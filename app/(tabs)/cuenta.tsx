@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { sendPasswordResetEmail } from "firebase/auth";
+import { router } from "expo-router";
 import { BusinessSettings, saveSession, updateAuthDisplayName } from "../../services/auth";
 import { auth } from "../../services/firebase";
 import { updateUserProfile, updateUserSettings } from "../../services/firestore";
@@ -195,12 +196,12 @@ export default function CuentaScreen() {
                     {renderOption("shield-checkmark-outline", "Restablecer contraseña", "Enviar correo de recuperación", handleSecurityPress)}
                 </View>
 
-                {/* Sección: Configuración del negocio */}
-                <Text style={styles.sectionHeader}>Configuración del negocio</Text>
+                {/* Sección: Herramientas */}
+
+                {/* Sección: Herramientas */}
+                <Text style={styles.sectionHeader}>Herramientas</Text>
                 <View style={styles.sectionBlock}>
-                    {renderOption("cash-outline", "Moneda", `Actual: ${settings.currency}`, () => handleEditPress("currency"))}
-                    {renderOption("trending-up-outline", "Interés por mora", `Actual: ${settings.lateFeePercentage}%`, () => handleEditPress("lateFeePercentage"))}
-                    {renderOption("calendar-outline", "Días de gracia", `Actual: ${settings.graceDays} días`, () => handleEditPress("graceDays"))}
+                    {renderOption("bar-chart-outline", "Reportes y Analytics", "Ver estadísticas de cobranza", () => router.push("/reportes"))}
                 </View>
 
                 {/* Sección: Información */}

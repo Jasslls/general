@@ -44,7 +44,8 @@
           }
         }
       ],
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "expo-mail-composer"
     ],
     "experiments": {
       "typedRoutes": true,

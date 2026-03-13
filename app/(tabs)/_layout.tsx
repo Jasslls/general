@@ -53,6 +53,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="asistente"
+        options={{
+          title: "Asistente",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sparkles-outline" size={size ?? 26} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="cuenta"
         options={{
           title: "Cuenta",

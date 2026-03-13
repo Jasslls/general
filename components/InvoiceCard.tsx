@@ -1,8 +1,9 @@
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { InvoiceStatus } from "../models/types";
 import { lightColors, useAppColors } from "../themes/colors";
+import { Image } from "expo-image";
 
 function badgeStyle(status: InvoiceStatus, colors: any) {
     if (status === "Vencida") return { bg: colors.danger + "1A", fg: colors.danger };
@@ -22,6 +23,7 @@ export function InvoiceCard({
     onMarkPaid,
     onShare,
     onWhatsApp,
+    proofUri,
 }: {
     id: string;
     clientName: string;
@@ -34,6 +36,7 @@ export function InvoiceCard({
     onMarkPaid?: () => void;
     onShare?: () => void;
     onWhatsApp?: () => void;
+    proofUri?: string; // ✅ Nuevo
 }) {
     const colors = useAppColors();
     const styles = getStyles(colors);
@@ -44,14 +47,14 @@ export function InvoiceCard({
         <View style={styles.card}>
             <View style={styles.topRow}>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.id}>{id}</Text>
-                    <Text style={styles.client}>{clientName}</Text>
+                    <Text style={styles.id} numberOfLines={2}>{clientName}</Text>
+                    <Text style={styles.client} numberOfLines={1}>#{id}</Text>
                 </View>
 
                 <View style={styles.actions}>
                     {onWhatsApp && (
                         <Pressable onPress={onWhatsApp} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                            <FontAwesome name="whatsapp" size={20} color={colors.success} />
+                            <MaterialIcons name="notifications-none" size={22} color={colors.primary} />
                         </Pressable>
                     )}
                     <Pressable onPress={onShare} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
@@ -75,6 +78,18 @@ export function InvoiceCard({
                     <Text style={styles.due}>{dueLabel}</Text>
 
                     <View style={styles.metaRow}>
+                        {proofUri && (
+                            <View style={styles.proofContainer}>
+                                <Image 
+                                    source={{ uri: proofUri }} 
+                                    style={styles.proofThumb}
+                                    contentFit="cover"
+                                />
+                                <View style={styles.proofBadge}>
+                                    <Text style={{ fontSize: 10 }}>📄</Text>
+                                </View>
+                            </View>
+                        )}
                         <View style={[styles.badge, { backgroundColor: b.bg }]}>
                             <Text style={[styles.badgeText, { color: b.fg }]}>{status}</Text>
                         </View>
@@ -122,6 +137,26 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
 
     badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
     badgeText: { fontWeight: "900", fontSize: 12 },
+    
+    proofContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: colors.border,
+        overflow: "hidden",
+        position: "relative"
+    },
+    proofThumb: { width: "100%", height: "100%" },
+    proofBadge: {
+        position: "absolute",
+        bottom: -2,
+        right: -2,
+        backgroundColor: "#fff",
+        borderRadius: 6,
+        padding: 2,
+        borderWidth: 1,
+        borderColor: colors.border
+    },
 
     paidBtn: {
         paddingHorizontal: 10,

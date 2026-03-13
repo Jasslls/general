@@ -1,4 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     Alert,
@@ -215,10 +216,11 @@ export default function ClientesScreen() {
                                 email={c.email}
                                 phone={c.phone}
                                 rfc={c.rfc}
+                                riskLevel={c.riskLevel}
                                 onEdit={() => openEdit(c)}
                                 onDelete={() => void handleDelete(c)}
                                 onWhatsApp={() => {
-                                    openWhatsApp(c.phone, `Hola ${c.name}, te escribo de PagoFijoHN...`);
+                                    openWhatsApp(c.phone, `Hola ${c.name}, le escribimos de PagoFijoHN...`);
                                 }}
                             />
                         </View>

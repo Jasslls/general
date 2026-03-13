@@ -8,6 +8,9 @@ import { useAppColors } from "../themes/colors";
 
 import { clearSession, getSession, saveSession, UserSession } from "../services/auth";
 import { auth } from "../services/firebase";
+import { syncBusinessIntelligence } from "../services/sync";
+import { requestNotificationPermissions, checkAndNotifyUrgentInvoices } from "../services/notifications";
+import { getClients, getAllInvoices } from "../services/firestore";
 
 // ─── Auth Context ────────────────────────────────────────────────────────────
 interface AuthContextType {
@@ -50,6 +53,9 @@ export default function RootLayout() {
   useEffect(() => {
     let isFirstAuthEvent = true;
 
+    // Request notification permissions
+    requestNotificationPermissions();
+
     // 1. Cargar desde AsyncStorage para velocidad inicial
     (async () => {
       const session = await getSession();
@@ -78,8 +84,20 @@ export default function RootLayout() {
         }
       }
 
+
       if (isFirstAuthEvent) {
         isFirstAuthEvent = false;
+        
+        // Execute BI Sync if user exists
+        if (fbUser) {
+           syncBusinessIntelligence(fbUser.uid).then(async () => {
+             // Proactive notification check
+             const clients = await getClients(fbUser.uid);
+             const invoices = await getAllInvoices(fbUser.uid);
+             checkAndNotifyUrgentInvoices(invoices, clients);
+           }).catch(console.error);
+        }
+
         setIsAuthReady(true);
         setLoading(false);
       }

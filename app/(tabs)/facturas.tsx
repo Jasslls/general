@@ -12,9 +12,11 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 
 import { InvoiceCard } from "../../components/InvoiceCard";
 import { InvoiceFormModal } from "../../components/InvoiceFormModal";
+import { ReminderModal } from "../../components/ReminderModal";
 import type { Client, Invoice, InvoiceStatus } from "../../models/types";
 import {
     addInvoice,
@@ -26,6 +28,7 @@ import {
 } from "../../services/firestore";
 import { generateInvoicePDF } from "../../services/pdf";
 import { setItem } from "../../services/storage";
+import { syncBusinessIntelligence } from "../../services/sync";
 import { lightColors, useAppColors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
 import { useAuth } from "../_layout";
@@ -103,6 +106,11 @@ export default function FacturasScreen() {
     const [filter, setFilter] = useState<"Todos" | InvoiceStatus>("Todos");
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Invoice | null>(null);
+
+    // ReminderModal state
+    const [reminderModalOpen, setReminderModalOpen] = useState(false);
+    const [reminderClient, setReminderClient] = useState<Client | null>(null);
+    const [reminderInvoice, setReminderInvoice] = useState<Invoice | null>(null);
 
     async function loadAll() {
         if (!uid) return;
@@ -221,6 +229,7 @@ export default function FacturasScreen() {
                 });
             }
             setModalOpen(false);
+            await syncBusinessIntelligence(uid); // Update Risk Scores
             loadAll();
         } catch (error) {
             Alert.alert("Error", "No se pudo guardar la factura.");
@@ -230,9 +239,12 @@ export default function FacturasScreen() {
     async function markPaid(inv: Invoice) {
         if (!uid || inv.status === "Cobrada") return;
 
-        const run = async () => {
+        const run = async (photoUri?: string) => {
             try {
-                await updateInvoice(uid, inv.clientId, inv.id, { status: "Cobrada" });
+                await updateInvoice(uid, inv.clientId, inv.id, { 
+                    status: "Cobrada",
+                    proofUri: photoUri
+                });
                 await pushActivity(uid, {
                     type: "invoice_paid",
                     invoiceId: inv.id,
@@ -241,20 +253,42 @@ export default function FacturasScreen() {
                     status: "Cobrada",
                     desc: inv.desc,
                     due: inv.due,
-                    ts: new Date().toISOString()
+                    ts: new Date().toISOString(),
+                    proofUri: photoUri
                 });
+                await syncBusinessIntelligence(uid); // Update Risk Scores
                 loadAll();
             } catch (error) {
                 Alert.alert("Error", "No se pudo marcar como cobrada.");
             }
         };
 
+        const pickImageAndPaid = async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.7,
+            });
+
+            if (!result.canceled) {
+                run(result.assets[0].uri);
+            } else {
+                run(); // Mark as paid without photo
+            }
+        };
+
         if (Platform.OS === "web") return run();
 
-        Alert.alert("Marcar como cobrada", `¿Marcar ${inv.id} como cobrada?`, [
-            { text: "Cancelar", style: "cancel" },
-            { text: "Sí, cobrada", onPress: run },
-        ]);
+        Alert.alert(
+            "Marcar como cobrada", 
+            `¿Marcar ${inv.id} como cobrada?`, 
+            [
+                { text: "Cancelar", style: "cancel" },
+                { text: "Cobrar", onPress: () => run() },
+                { text: "Subir Comprobante", onPress: pickImageAndPaid },
+            ]
+        );
     }
 
     async function handleDeleteInvoice(inv: Invoice) {
@@ -272,6 +306,7 @@ export default function FacturasScreen() {
                     due: inv.due,
                     ts: new Date().toISOString()
                 });
+                await syncBusinessIntelligence(uid); // Update Risk Scores
                 loadAll();
             } catch (error) {
                 Alert.alert("Error", "No se pudo eliminar la factura.");
@@ -341,7 +376,7 @@ export default function FacturasScreen() {
                             <InvoiceCard
                                 key={inv.id}
                                 id={inv.id}
-                                clientName={c?.company ?? c?.name ?? "Cliente"}
+                                clientName={c ? (c.company ? `${c.company} - ${c.name}` : c.name) : "Cliente"}
                                 desc={inv.desc}
                                 amount={money(inv.amount)}
                                 dueLabel={prettyDue(inv.due)}
@@ -349,13 +384,15 @@ export default function FacturasScreen() {
                                 onEdit={() => openEdit(inv)}
                                 onDelete={() => handleDeleteInvoice(inv)}
                                 onMarkPaid={() => markPaid(inv)}
+                                proofUri={inv.proofUri}
                                 onShare={() => {
                                     if (c) generateInvoicePDF(inv, c);
                                 }}
                                 onWhatsApp={() => {
                                     if (!c) return;
-                                    const msg = `Hola ${c.name}, le escribimos de PagoFijoHN para recordarle su factura ${inv.id} por $${inv.amount} que vence el ${inv.due}. Gracias.`;
-                                    openWhatsApp(c.phone, msg);
+                                    setReminderClient(c);
+                                    setReminderInvoice(inv);
+                                    setReminderModalOpen(true);
                                 }}
                             />
                         );
@@ -368,6 +405,13 @@ export default function FacturasScreen() {
                     onSave={saveInvoiceData}
                     clients={clients}
                     initial={editing}
+                />
+
+                <ReminderModal
+                    visible={reminderModalOpen}
+                    onClose={() => setReminderModalOpen(false)}
+                    client={reminderClient}
+                    invoice={reminderInvoice}
                 />
             </ScrollView>
         </SafeAreaView>

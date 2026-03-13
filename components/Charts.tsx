@@ -100,8 +100,12 @@ export function CashFlowBarCard({ invoices }: { invoices: Invoice[] }) {
                     return (
                         <View key={d.key} style={styles.barItem}>
                             <View style={styles.barStack}>
-                                <View style={[styles.bar, styles.barCobrado, { height: `${hCob}%` }]} />
-                                <View style={[styles.bar, styles.barProyectado, { height: `${hPro}%` }]} />
+                                {d.cobradas > 0 && (
+                                    <View style={[styles.bar, styles.barCobrado, { height: Math.max(4, Math.round((d.cobradas / max) * 100)) }]} />
+                                )}
+                                {d.proyectado > 0 && (
+                                    <View style={[styles.bar, styles.barProyectado, { height: Math.max(4, Math.round((d.proyectado / max) * 100)) }]} />
+                                )}
                             </View>
 
                             <Text style={styles.barLabel}>{d.label}</Text>
@@ -226,12 +230,15 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     barStack: {
         width: "100%",
         flex: 1,
+        flexDirection: "column",
         justifyContent: "flex-end",
-        gap: 6,
+        alignItems: "center",
+        gap: 3,
     },
     bar: {
-        width: "100%",
-        borderRadius: 10,
+        width: "85%",
+        borderRadius: 6,
+        minHeight: 4,
     },
     barCobrado: {
         backgroundColor: colors.primary,

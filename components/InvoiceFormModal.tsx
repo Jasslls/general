@@ -12,7 +12,7 @@ import {
     View,
 } from "react-native";
 
-import type { Client, Invoice, InvoiceStatus } from "../models/types";
+import type { Client, Invoice, InvoiceRecurrence, InvoiceStatus } from "../models/types";
 import { setItem } from "../services/storage";
 import { lightColors, useAppColors } from "../themes/colors";
 import { DateField } from "./DateField";
@@ -23,6 +23,7 @@ type Form = {
     amount: string;
     due: string; // "YYYY-MM-DD"
     status: InvoiceStatus;
+    recurrence: InvoiceRecurrence;
 };
 
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
@@ -56,6 +57,7 @@ export function InvoiceFormModal({
         amount: "",
         due: "",
         status: "Pendiente",
+        recurrence: "none",
     });
 
     useEffect(() => {
@@ -68,6 +70,7 @@ export function InvoiceFormModal({
                 amount: String(initial.amount ?? ""),
                 due: initial.due ?? "",
                 status: initial.status,
+                recurrence: initial.recurrence || "none",
             });
             return;
         }
@@ -78,6 +81,7 @@ export function InvoiceFormModal({
             amount: "",
             due: "",
             status: "Pendiente",
+            recurrence: "none",
         });
     }, [visible, initial, clients]);
 
@@ -95,7 +99,19 @@ export function InvoiceFormModal({
     );
 
     function set<K extends keyof Form>(k: K, v: Form[K]) {
-        setForm((p) => ({ ...p, [k]: v }));
+        setForm((p) => {
+            const next = { ...p, [k]: v };
+            
+            // Auto Pendiente si la fecha es en el futuro
+            if (k === "due") {
+                const today = new Date().toISOString().split("T")[0];
+                if (v > today) {
+                    next.status = "Pendiente";
+                }
+            }
+            
+            return next;
+        });
     }
 
     async function goToClientsAndOpenNew() {
@@ -123,6 +139,7 @@ export function InvoiceFormModal({
             amount: amt,
             due: form.due,
             status: form.status,
+            recurrence: form.recurrence,
         });
 
         onClose();
@@ -224,7 +241,7 @@ export function InvoiceFormModal({
 
                                     <Text style={styles.label}>Estado</Text>
                                     <View style={{ flexDirection: "row", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-                                        {(["Pendiente", "Vencida", "Cobrada"] as InvoiceStatus[]).map((s) => {
+                                        {((form.due > new Date().toISOString().split("T")[0] ? ["Pendiente"] : ["Pendiente", "Vencida", "Cobrada"]) as InvoiceStatus[]).map((s) => {
                                             const active = s === form.status;
                                             return (
                                                 <Pressable
@@ -245,6 +262,44 @@ export function InvoiceFormModal({
                                             );
                                         })}
                                     </View>
+
+                                    <Text style={styles.label}>Facturación Recurrente</Text>
+                                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+                                        {[
+                                            { val: "none", label: "Ninguna" },
+                                            { val: "semanal", label: "Semanal" },
+                                            { val: "mensual", label: "Mensual" },
+                                            { val: "anual", label: "Anual" },
+                                        ].map((opt) => {
+                                            const active = opt.val === form.recurrence;
+                                            return (
+                                                <Pressable
+                                                    key={opt.val}
+                                                    onPress={() => set("recurrence", opt.val as InvoiceRecurrence)}
+                                                    style={[
+                                                        styles.pill,
+                                                        {
+                                                            borderColor: active ? colors.primary : colors.border,
+                                                            backgroundColor: active ? colors.primary + "1A" : "transparent",
+                                                        },
+                                                    ]}
+                                                >
+                                                    <Text style={[styles.pillText, { color: active ? colors.primary : colors.text }]}>
+                                                        {opt.label}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+                                    
+                                    {form.recurrence !== "none" && (
+                                        <Text style={styles.recurrenceHint}>
+                                            ⏱ Se creará una nueva factura automáticamente cada {
+                                                form.recurrence === "semanal" ? "semana" : 
+                                                form.recurrence === "mensual" ? "mes" : "año"
+                                            } después de la fecha de vencimiento inicial.
+                                        </Text>
+                                    )}
                                 </ScrollView>
 
                                 <View style={styles.footer}>
@@ -272,6 +327,15 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
 
     label: { color: colors.muted, fontWeight: "800", marginTop: 10, marginBottom: 6 },
     hint: { color: colors.muted, marginBottom: 6, fontWeight: "600" },
+    recurrenceHint: { 
+        backgroundColor: colors.primary + "15", 
+        color: colors.primary, 
+        padding: 10, 
+        borderRadius: 8, 
+        fontWeight: "600",
+        fontSize: 13,
+        overflow: "hidden"
+    },
 
     input: {
         borderWidth: 1,

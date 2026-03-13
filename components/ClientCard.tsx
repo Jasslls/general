@@ -12,16 +12,32 @@ type Props = {
     onEdit?: () => void;
     onDelete?: () => void;
     onWhatsApp?: () => void;
+    riskLevel?: string;
 };
 
-export function ClientCard({ name, company, email, phone, rfc, onEdit, onDelete, onWhatsApp }: Props) {
+export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit, onDelete, onWhatsApp }: Props) {
     const colors = useAppColors();
     const styles = getStyles(colors);
     return (
         <View style={styles.card}>
             <View style={styles.topRow}>
-                <View style={styles.iconBox}>
-                    <Text style={styles.iconText}>🏢</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View style={styles.iconBox}>
+                        <Text style={styles.iconText}>🏢</Text>
+                    </View>
+                    {riskLevel && ["bajo", "medio", "alto"].includes(riskLevel) && (
+                        <View style={[
+                            styles.riskBadge, 
+                            { backgroundColor: riskLevel === "alto" ? colors.danger + "20" : riskLevel === "medio" ? "#F59E0B20" : colors.success + "20" }
+                        ]}>
+                            <Text style={[
+                                styles.riskText, 
+                                { color: riskLevel === "alto" ? colors.danger : riskLevel === "medio" ? "#F59E0B" : colors.success }
+                            ]}>
+                                Riesgo {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 <View style={styles.actions}>
@@ -38,7 +54,6 @@ export function ClientCard({ name, company, email, phone, rfc, onEdit, onDelete,
                     </Pressable>
                 </View>
             </View>
-
             <Text style={styles.name}>{name}</Text>
             <Text style={styles.company}>{company}</Text>
 
@@ -80,11 +95,14 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     actionBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
     actionText: { fontSize: 16, color: colors.text },
 
-    name: { marginTop: 10, fontSize: 16, fontWeight: "900", color: colors.text },
+    name: { marginTop: 14, fontSize: 16, fontWeight: "900", color: colors.text },
     company: { marginTop: 2, color: colors.muted, fontWeight: "600" },
 
     line: { color: colors.text, marginTop: 6, fontWeight: "600" },
 
     divider: { height: 1, backgroundColor: colors.border, marginVertical: 12 },
     rfc: { color: colors.muted, fontWeight: "700" },
+
+    riskBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    riskText: { fontSize: 11, fontWeight: "900" },
 });
