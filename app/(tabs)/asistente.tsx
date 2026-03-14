@@ -226,7 +226,7 @@ export default function AsistenteScreen() {
                 actions.push({
                     type: "navigate",
                     label: `👤 Ver a ${mentionedClient.name}`,
-                    payload: { route: "/(tabs)/clientes", params: { highlightId: mentionedClient.id } }
+                    payload: { route: "/(tabs)/clientes", params: { q: mentionedClient.name, highlightId: mentionedClient.id } }
                 });
             }
 
@@ -256,7 +256,13 @@ export default function AsistenteScreen() {
                 actions.push({
                     type: "navigate",
                     label: "📑 Ver Facturas Vencidas",
-                    payload: { route: "/(tabs)/facturas", params: { filter: "Vencida" } }
+                    payload: { 
+                        route: "/(tabs)/facturas", 
+                        params: { 
+                            filter: "Vencida",
+                            q: mentionedClient ? mentionedClient.name : undefined 
+                        } 
+                    }
                 });
             }
 
@@ -298,20 +304,19 @@ export default function AsistenteScreen() {
     };
 
     // ── Premium lock screen ──────────────────────────────────────────
-    if (!premiumLoading && !isPremium) {
-        return (
-            <SafeAreaView style={styles.safe} edges={["top"]}>
-                {/* Header still shows for navigation context */}
-                <View style={styles.header}>
-                    <View style={styles.avatarBox}>
-                        <Text style={styles.avatarText}>✦</Text>
-                    </View>
-                    <View>
-                        <Text style={styles.h1}>Fijito</Text>
-                        <Text style={styles.sub}>Asistente Financiero IA</Text>
-                    </View>
+    return (
+        <SafeAreaView style={styles.safe} edges={["top"]}>
+            <View style={styles.header}>
+                <View style={styles.avatarBox}>
+                    <Text style={styles.avatarText}>✦</Text>
                 </View>
+                <View>
+                    <Text style={styles.h1}>Fijito</Text>
+                    <Text style={styles.sub}>Asistente Financiero IA</Text>
+                </View>
+            </View>
 
+            {!premiumLoading && !isPremium ? (
                 <View style={styles.lockScreen}>
                     <Text style={styles.lockCrown}>👑</Text>
                     <Text style={styles.lockTitle}>Fijito es Premium</Text>
@@ -335,141 +340,121 @@ export default function AsistenteScreen() {
                         <Text style={styles.lockCTAText}>👑 Desbloquear Fijito</Text>
                     </Pressable>
                 </View>
-
-                <PaywallModal
-                    visible={paywallVisible}
-                    onClose={() => setPaywallVisible(false)}
-                    onActivated={() => setPaywallVisible(false)}
-                />
-            </SafeAreaView>
-        );
-    }
-
-    return (
-        <SafeAreaView style={styles.safe} edges={["top"]}>
-            <View style={styles.header}>
-                <View style={styles.avatarBox}>
-                    <Text style={styles.avatarText}>✦</Text>
-                </View>
-                <View>
-                    <Text style={styles.h1}>Fijito</Text>
-                    <Text style={styles.sub}>Asistente Financiero IA</Text>
-                </View>
-            </View>
-
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                keyboardVerticalOffset={0}
-            >
-                <ScrollView
-                    ref={scrollRef}
-                    style={styles.chatArea}
-                    contentContainerStyle={styles.chatContent}
-                    keyboardShouldPersistTaps="handled"
+            ) : (
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    keyboardVerticalOffset={0}
                 >
-                    {/* Welcome */}
-                    {entries.length === 0 && !contextLoading && (
-                        <View style={styles.welcomeWrap}>
-                            <View style={[styles.bubble, styles.assistBubble]}>
-                                <Text style={styles.assistText}>
-                                    ¡Hola! Soy <Text style={{ fontWeight: "900" }}>Fijito</Text>, tu asistente financiero de PagoFijoHN.
-                                    Puedo ayudarte a entender tus cobros, analizar deudores y hasta iniciar la cobranza de una factura. ¿En qué te puedo ayudar?
-                                </Text>
-                            </View>
-                            <Text style={styles.quickTitle}>Preguntas frecuentes:</Text>
-                            <View style={styles.quickGrid}>
-                                {QUICK_QUESTIONS.map((q) => (
-                                    <Pressable key={q} onPress={() => sendMessage(q)} style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.7 }]}>
-                                        <Text style={styles.quickText}>{q}</Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                    {contextLoading && (
-                        <View style={styles.ctxLoading}>
-                            <ActivityIndicator color={colors.primary} />
-                            <Text style={styles.ctxLoadText}>Cargando datos financieros...</Text>
-                        </View>
-                    )}
-
-                    {/* Messages */}
-                    {entries.map((entry, i) => (
-                        <View key={i} style={[styles.bubbleWrap, entry.msg.role === "user" ? styles.userWrap : styles.assistWrap]}>
-                            <View style={[styles.bubble, entry.msg.role === "user" ? styles.userBubble : styles.assistBubble]}>
-                                <Text style={entry.msg.role === "user" ? styles.userText : styles.assistText}>
-                                    {entry.msg.text}
-                                </Text>
-                            </View>
-
-                            {/* Actions */}
-                            {entry.msg.role === "assistant" && entry.actions && (
-                                <View style={styles.actionsRow}>
-                                    {entry.actions.map((act, idx) => (
-                                        <Pressable
-                                            key={idx}
-                                            onPress={() => handleAction(act)}
-                                            style={({ pressed }) => [
-                                                styles.actionChip, 
-                                                act.type === "navigate" && styles.navChip,
-                                                act.type === "danger" && styles.dangerChip,
-                                                pressed && { opacity: 0.75 }
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                styles.actionChipText, 
-                                                act.type === "navigate" && styles.navChipText,
-                                                act.type === "danger" && styles.dangerChipText,
-                                            ]}>
-                                                {act.label}
-                                            </Text>
+                    <ScrollView
+                        ref={scrollRef}
+                        style={styles.chatArea}
+                        contentContainerStyle={styles.chatContent}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {/* Welcome */}
+                        {entries.length === 0 && !contextLoading && (
+                            <View style={styles.welcomeWrap}>
+                                <View style={[styles.bubble, styles.assistBubble]}>
+                                    <Text style={styles.assistText}>
+                                        ¡Hola! Soy <Text style={{ fontWeight: "900" }}>Fijito</Text>, tu asistente financiero de PagoFijoHN.
+                                        Puedo ayudarte a entender tus cobros, analizar deudores y hasta iniciar la cobranza de una factura. ¿En qué te puedo ayudar?
+                                    </Text>
+                                </View>
+                                <Text style={styles.quickTitle}>Preguntas frecuentes:</Text>
+                                <View style={styles.quickGrid}>
+                                    {QUICK_QUESTIONS.map((q) => (
+                                        <Pressable key={q} onPress={() => sendMessage(q)} style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.7 }]}>
+                                            <Text style={styles.quickText}>{q}</Text>
                                         </Pressable>
                                     ))}
                                 </View>
-                            )}
-                        </View>
-                    ))}
-
-                    {/* Typing */}
-                    {loading && (
-                        <View style={[styles.bubbleWrap, styles.assistWrap]}>
-                            <View style={[styles.bubble, styles.assistBubble, styles.typingBubble]}>
-                                <ActivityIndicator size="small" color={colors.primary} />
-                                <Text style={[styles.assistText, { marginLeft: 8 }]}>Analizando...</Text>
                             </View>
-                        </View>
-                    )}
-                </ScrollView>
+                        )}
 
-                {/* Input bar */}
-                <View style={styles.inputBar}>
-                    <TextInput
-                        value={input}
-                        onChangeText={setInput}
-                        placeholder="Pregúntale a Fijito..."
-                        placeholderTextColor={colors.muted}
-                        style={styles.input}
-                        multiline
-                        maxLength={500}
-                        onSubmitEditing={() => sendMessage(input)}
-                        returnKeyType="send"
-                        blurOnSubmit
-                    />
-                    <Pressable
-                        onPress={() => sendMessage(input)}
-                        disabled={loading || !input.trim() || !ctx}
-                        style={({ pressed }) => [
-                            styles.sendBtn,
-                            (loading || !input.trim() || !ctx) && { opacity: 0.4 },
-                            pressed && { opacity: 0.7 },
-                        ]}
-                    >
-                        <Text style={styles.sendIcon}>➤</Text>
-                    </Pressable>
-                </View>
-            </KeyboardAvoidingView>
+                        {contextLoading && (
+                            <View style={styles.ctxLoading}>
+                                <ActivityIndicator color={colors.primary} />
+                                <Text style={styles.ctxLoadText}>Cargando datos financieros...</Text>
+                            </View>
+                        )}
+
+                        {/* Messages */}
+                        {entries.map((entry, i) => (
+                            <View key={i} style={[styles.bubbleWrap, entry.msg.role === "user" ? styles.userWrap : styles.assistWrap]}>
+                                <View style={[styles.bubble, entry.msg.role === "user" ? styles.userBubble : styles.assistBubble]}>
+                                    <Text style={entry.msg.role === "user" ? styles.userText : styles.assistText}>
+                                        {entry.msg.text}
+                                    </Text>
+                                </View>
+
+                                {/* Actions */}
+                                {entry.msg.role === "assistant" && entry.actions && (
+                                    <View style={styles.actionsRow}>
+                                        {entry.actions.map((act, idx) => (
+                                            <Pressable
+                                                key={idx}
+                                                onPress={() => handleAction(act)}
+                                                style={({ pressed }) => [
+                                                    styles.actionChip, 
+                                                    act.type === "navigate" && styles.navChip,
+                                                    act.type === "danger" && styles.dangerChip,
+                                                    pressed && { opacity: 0.75 }
+                                                ]}
+                                            >
+                                                <Text style={[
+                                                    styles.actionChipText, 
+                                                    act.type === "navigate" && styles.navChipText,
+                                                    act.type === "danger" && styles.dangerChipText,
+                                                ]}>
+                                                    {act.label}
+                                                </Text>
+                                            </Pressable>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        ))}
+
+                        {/* Typing */}
+                        {loading && (
+                            <View style={[styles.bubbleWrap, styles.assistWrap]}>
+                                <View style={[styles.bubble, styles.assistBubble, styles.typingBubble]}>
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                    <Text style={[styles.assistText, { marginLeft: 8 }]}>Analizando...</Text>
+                                </View>
+                            </View>
+                        )}
+                    </ScrollView>
+
+                    {/* Input bar */}
+                    <View style={styles.inputBar}>
+                        <TextInput
+                            value={input}
+                            onChangeText={setInput}
+                            placeholder="Pregúntale a Fijito..."
+                            placeholderTextColor={colors.muted}
+                            style={styles.input}
+                            multiline
+                            maxLength={500}
+                            onSubmitEditing={() => sendMessage(input)}
+                            returnKeyType="send"
+                            blurOnSubmit
+                        />
+                        <Pressable
+                            onPress={() => sendMessage(input)}
+                            disabled={loading || !input.trim() || !ctx}
+                            style={({ pressed }) => [
+                                styles.sendBtn,
+                                (loading || !input.trim() || !ctx) && { opacity: 0.4 },
+                                pressed && { opacity: 0.7 },
+                            ]}
+                        >
+                            <Text style={styles.sendIcon}>➤</Text>
+                        </Pressable>
+                    </View>
+                </KeyboardAvoidingView>
+            )}
 
             <ReminderModal
                 visible={modalVisible}
@@ -477,6 +462,12 @@ export default function AsistenteScreen() {
                 client={modalClient}
                 invoice={modalInvoice}
                 onPremiumRequired={() => setPaywallVisible(true)}
+            />
+
+            <PaywallModal
+                visible={paywallVisible}
+                onClose={() => setPaywallVisible(false)}
+                onActivated={() => setPaywallVisible(false)}
             />
 
         </SafeAreaView>

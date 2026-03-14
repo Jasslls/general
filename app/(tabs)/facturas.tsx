@@ -1,6 +1,7 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useMemo, useState, useCallback } from "react";
 import {
     Alert,
     Platform,
@@ -16,24 +17,27 @@ import * as ImagePicker from "expo-image-picker";
 
 import { InvoiceCard } from "../../components/InvoiceCard";
 import { InvoiceFormModal } from "../../components/InvoiceFormModal";
-import { PaywallModal } from "../../components/PaywallModal";
-import { ReminderModal } from "../../components/ReminderModal";
-
+import { PeriodSelectorModal } from "../../components/PeriodSelectorModal";
 import type { Client, Invoice, InvoiceStatus } from "../../models/types";
-import {
-    addInvoice,
-    deleteInvoice,
-    getAllInvoices,
-    getClients,
-    pushActivity,
-    updateInvoice
-} from "../../services/firestore";
 import { generateInvoicePDF } from "../../services/pdf";
 import { setItem } from "../../services/storage";
 import { syncBusinessIntelligence } from "../../services/sync";
 import { lightColors, useAppColors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
 import { useAuth } from "../../context/AuthContext";
+import { usePremium } from "../../hooks/usePremium";
+import { saveSession } from "../../services/auth";
+import {
+    addInvoice,
+    deleteInvoice,
+    getAllInvoices,
+    getClients,
+    pushActivity,
+    updateInvoice,
+    updateUserSettings
+} from "../../services/firestore";
+import { PaywallModal } from "../../components/PaywallModal";
+import { ReminderModal } from "../../components/ReminderModal";
 
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
 
@@ -96,14 +100,16 @@ function sortInvoicesPro(a: Invoice, b: Invoice) {
 }
 
 export default function FacturasScreen() {
+    const { isPremium } = usePremium();
     const colors = useAppColors();
     const styles = getStyles(colors);
-    const { user } = useAuth();
+    const { user, setUser } = useAuth();
     const uid = user?.id;
 
     const [clients, setClients] = useState<Client[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
+    const params = useLocalSearchParams<{ q?: string; filter?: string }>();
     const [q, setQ] = useState("");
     const [filter, setFilter] = useState<"Todos" | InvoiceStatus>("Todos");
     const [modalOpen, setModalOpen] = useState(false);
@@ -114,6 +120,50 @@ export default function FacturasScreen() {
     const [reminderClient, setReminderClient] = useState<Client | null>(null);
     const [reminderInvoice, setReminderInvoice] = useState<Invoice | null>(null);
     const [paywallVisible, setPaywallVisible] = useState(false);
+
+    // Period Filter State
+    const [period, setPeriod] = useState<"Todos" | "Diario" | "Semanal" | "Mensual" | "Anual" | "Personalizado">("Todos");
+    const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
+    const [periodModalOpen, setPeriodModalOpen] = useState(false);
+
+    const viewMode = user?.settings?.viewMode || 'normal';
+
+    const toggleViewMode = async () => {
+        if (!uid || !user) return;
+        const next = viewMode === 'normal' ? 'compact' : 'normal';
+        const newSettings = { ...user.settings!, viewMode: next as any };
+        await updateUserSettings(uid, newSettings);
+        const updatedSession = { ...user, settings: newSettings };
+        await saveSession(updatedSession);
+        setUser(updatedSession);
+    };
+
+    const getPeriodRange = () => {
+        const now = new Date();
+        const today = toDayKeyLocal(now);
+
+        if (period === "Diario") return { start: today, end: today };
+        if (period === "Semanal") {
+            const first = now.getDate() - now.getDay();
+            const start = new Date(now.setDate(first));
+            const end = new Date(now.setDate(first + 6));
+            return { start: toDayKeyLocal(start), end: toDayKeyLocal(end) };
+        }
+        if (period === "Mensual") {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            return { start: toDayKeyLocal(start), end: toDayKeyLocal(end) };
+        }
+        if (period === "Anual") {
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear(), 11, 31);
+            return { start: toDayKeyLocal(start), end: toDayKeyLocal(end) };
+        }
+        if (period === "Personalizado" && customRange) return customRange;
+        return null;
+    };
+
+    const periodRange = getPeriodRange();
 
 
     async function loadAll() {
@@ -137,9 +187,15 @@ export default function FacturasScreen() {
     }
 
     useFocusEffect(
-        React.useCallback(() => {
+        useCallback(() => {
+            if (params.q) {
+                setQ(params.q);
+            }
+            if (params.filter && ["Todos", "Pendiente", "Vencida", "Cobrada"].includes(params.filter)) {
+                setFilter(params.filter as any);
+            }
             loadAll();
-        }, [uid])
+        }, [uid, params.q, params.filter])
     );
 
     const clientById = useMemo(() => {
@@ -149,23 +205,37 @@ export default function FacturasScreen() {
     }, [clients]);
 
     const filtered = useMemo(() => {
-        const s = q.trim().toLowerCase();
+        let list = getNormalizedInvoices(invoices, toDayKeyLocal(new Date()));
 
-        const base = invoices.filter((x) => {
-            const c = clientById.get(x.clientId);
-            const byText =
-                !s ||
-                String(x.id ?? "").toLowerCase().includes(s) ||
-                String(x.desc ?? "").toLowerCase().includes(s) ||
-                (c?.name ?? "").toLowerCase().includes(s) ||
-                (c?.company ?? "").toLowerCase().includes(s);
+        // Status Filter
+        if (filter !== "Todos") {
+            list = list.filter((inv) => inv.status === filter);
+        }
 
-            const byFilter = filter === "Todos" ? true : x.status === filter;
-            return byText && byFilter;
-        });
+        // Period Filter
+        if (periodRange) {
+            list = list.filter(inv => {
+                if (!inv.due) return false;
+                return inv.due >= periodRange.start && inv.due <= periodRange.end;
+            });
+        }
 
-        return [...base].sort(sortInvoicesPro);
-    }, [q, filter, invoices, clientById]);
+        // Search text
+        if (q.trim()) {
+            const low = q.toLowerCase();
+            list = list.filter((inv) => {
+                const c = clients.find((cc) => cc.id === inv.clientId);
+                return (
+                    inv.id.toLowerCase().includes(low) ||
+                    inv.desc.toLowerCase().includes(low) ||
+                    c?.name.toLowerCase().includes(low) ||
+                    c?.company.toLowerCase().includes(low)
+                );
+            });
+        }
+
+        return list.sort(sortInvoicesPro);
+    }, [invoices, filter, q, clients, periodRange]);
 
     function nextInvoiceId() {
         const nums = invoices
@@ -177,6 +247,10 @@ export default function FacturasScreen() {
 
     // ✅ Si no hay clientes, NO abrir modal: ir a Clientes y abrir modal allá
     async function openNew() {
+        if (!isPremium && invoices.length >= 20) {
+            setPaywallVisible(true);
+            return;
+        }
         if (!clients.length) {
             await setItem(KEY_CLIENTS_INTENT, true);
             router.push("/clientes");
@@ -213,6 +287,10 @@ export default function FacturasScreen() {
                     ts: new Date().toISOString()
                 });
             } else {
+                if (!isPremium && invoices.length >= 20) {
+                    setPaywallVisible(true);
+                    return;
+                }
                 const id = nextInvoiceId();
                 await addInvoice(uid, data.clientId, {
                     desc: data.desc,
@@ -334,9 +412,19 @@ export default function FacturasScreen() {
                         <Text style={styles.sub}>Cuentas por cobrar</Text>
                     </View>
 
-                    <Pressable onPress={() => void openNew()} style={({ pressed }) => [styles.newBtn, pressed && { opacity: 0.85 }]}>
-                        <Text style={styles.newBtnText}>＋ Nueva</Text>
-                    </Pressable>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Pressable onPress={toggleViewMode} style={({ pressed }) => [styles.viewToggle, pressed && { opacity: 0.7 }]}>
+                            <MaterialIcons 
+                                name={viewMode === 'normal' ? "view-agenda" : "view-list"} 
+                                size={22} 
+                                color={colors.primary} 
+                            />
+                        </Pressable>
+
+                        <Pressable onPress={() => void openNew()} style={({ pressed }) => [styles.newBtn, pressed && { opacity: 0.85 }]}>
+                            <Text style={styles.newBtnText}>＋ Nueva</Text>
+                        </Pressable>
+                    </View>
                 </View>
 
                 <View style={styles.searchWrap}>
@@ -348,6 +436,29 @@ export default function FacturasScreen() {
                         placeholderTextColor={colors.muted}
                         style={styles.search}
                     />
+                </View>
+
+                <View style={styles.filterStrip}>
+                    <Pressable 
+                        onPress={() => setPeriodModalOpen(true)}
+                        style={({ pressed }) => [styles.dateChip, pressed && { opacity: 0.8 }]}
+                    >
+                        <Text style={styles.calendarIcon}>📅</Text>
+                        <Text style={styles.dateChipText}>
+                            {period === "Todos" ? "Cualquier fecha" : 
+                             period === "Personalizado" ? `${periodRange?.start} - ${periodRange?.end}` : 
+                             period}
+                        </Text>
+                        <Text style={styles.chevron}>▾</Text>
+                    </Pressable>
+                    
+                    <View style={{ flex: 1 }} />
+                    
+                    {period !== "Todos" && (
+                        <Pressable onPress={() => setPeriod("Todos")}>
+                            <Text style={styles.clearText}>Limpiar</Text>
+                        </Pressable>
+                    )}
                 </View>
 
                 <View style={styles.filterRow}>
@@ -385,6 +496,7 @@ export default function FacturasScreen() {
                                 amount={money(inv.amount)}
                                 dueLabel={prettyDue(inv.due)}
                                 status={inv.status}
+                                compact={viewMode === 'compact'}
                                 onEdit={() => openEdit(inv)}
                                 onDelete={() => handleDeleteInvoice(inv)}
                                 onMarkPaid={() => markPaid(inv)}
@@ -425,6 +537,20 @@ export default function FacturasScreen() {
                     onActivated={() => setPaywallVisible(false)}
                 />
 
+                <PeriodSelectorModal
+                    visible={periodModalOpen}
+                    onClose={() => setPeriodModalOpen(false)}
+                    current={period}
+                    onSelect={(p) => {
+                        setPeriod(p);
+                        if (p !== "Personalizado") setPeriodModalOpen(false);
+                    }}
+                    onCustomRange={(start, end) => {
+                        setCustomRange({ start, end });
+                        setPeriod("Personalizado");
+                        setPeriodModalOpen(false);
+                    }}
+                />
             </ScrollView>
         </SafeAreaView>
     );
@@ -438,8 +564,59 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     h1: { fontSize: 22, fontWeight: "900", color: colors.text },
     sub: { color: colors.muted, marginTop: 4, fontWeight: "600" },
 
+    filterStrip: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 16,
+        gap: 10,
+    },
+    dateChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 6,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    calendarIcon: { fontSize: 14 },
+    dateChipText: {
+        fontSize: 13,
+        fontWeight: "700",
+        color: colors.primary,
+    },
+    chevron: {
+        fontSize: 12,
+        color: colors.primary,
+        fontWeight: "900",
+    },
+    clearText: {
+        fontSize: 12,
+        color: colors.muted,
+        fontWeight: "700",
+        marginRight: 4,
+    },
+
     newBtn: { backgroundColor: "#0B1220", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
     newBtnText: { color: "#fff", fontWeight: "900" },
+
+    viewToggle: {
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center"
+    },
 
     searchWrap: {
         flexDirection: "row",

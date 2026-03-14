@@ -4,6 +4,7 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -21,6 +22,7 @@ const FEATURES = [
     { icon: "📊", text: "Reportes y analíticas avanzadas" },
     { icon: "🎯", text: "Indicadores de Riesgo (Bajo/Medio/Alto)" },
     { icon: "🔁", text: "Facturas recurrentes (semanal/mensual/anual)" },
+    { icon: "📈", text: "Expansión de registros (clientes y facturas)" },
     { icon: "🔔", text: "Notificaciones proactivas inteligentes" },
 ];
 
@@ -47,14 +49,22 @@ export function PaywallModal({ visible, onClose, onActivated }: Props) {
             await activateTrial();
             setWelcomeVisible(true);
         } catch {
-            Alert.alert("Error", "No se pudo activar la prueba. Intenta de nuevo.");
+            if (Platform.OS === "web") {
+                window.alert("Error: No se pudo activar la prueba. Intenta de nuevo.");
+            } else {
+                Alert.alert("Error", "No se pudo activar la prueba. Intenta de nuevo.");
+            }
         } finally {
             setActivating(false);
         }
     };
 
     const handleUpgrade = () => {
-        Alert.alert("Próximamente", "", [{ text: "OK" }]);
+        if (Platform.OS === "web") {
+            window.alert("Próximamente");
+        } else {
+            Alert.alert("Próximamente", "", [{ text: "OK" }]);
+        }
     };
 
 
@@ -141,15 +151,6 @@ export function PaywallModal({ visible, onClose, onActivated }: Props) {
                             </View>
 
                             {/* ── CTA Buttons ── */}
-                            <Pressable
-                                onPress={handleUpgrade}
-                                style={({ pressed }) => [styles.ctaBtn, pressed && { opacity: 0.85 }]}
-                            >
-                                <Text style={styles.ctaBtnText}>
-                                    Continuar con {selectedPlan === "monthly" ? "Mensual" : "Anual"}
-                                </Text>
-                            </Pressable>
-
                             {trialAvailable && (
                                 <Pressable
                                     onPress={handleTrial}
@@ -165,6 +166,15 @@ export function PaywallModal({ visible, onClose, onActivated }: Props) {
                                     )}
                                 </Pressable>
                             )}
+
+                            <Pressable
+                                onPress={handleUpgrade}
+                                style={({ pressed }) => [styles.ctaBtn, pressed && { opacity: 0.85 }]}
+                            >
+                                <Text style={styles.ctaBtnText}>
+                                    Continuar con {selectedPlan === "monthly" ? "Mensual" : "Anual"}
+                                </Text>
+                            </Pressable>
 
                             <Text style={styles.disclaimer}>
                                 Cancela cuando quieras · Pago 100% seguro

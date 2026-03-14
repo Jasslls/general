@@ -40,6 +40,12 @@ const PREMIUM_GUIDE = [
         desc: "Automatiza tus cobros fijos.",
         location: "Al crear o editar una factura."
     },
+    { 
+        icon: "📈", 
+        title: "Expansión de registros", 
+        desc: "Carga más de 10 clientes y 20 facturas.",
+        location: "Ilimitado en toda la aplicación."
+    },
 ];
 
 interface Props {

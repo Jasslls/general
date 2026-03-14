@@ -86,23 +86,37 @@ export default function CuentaScreen() {
 
     const handleSecurityPress = () => {
         if (!user?.email) return;
-        Alert.alert(
-            "Restablecer Contraseña",
-            `¿Deseas enviar un correo a ${user.email} con un enlace para restablecer tu contraseña?`,
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Enviar Correo", style: "destructive", onPress: async () => {
-                        try {
-                            await sendPasswordResetEmail(auth, user.email);
-                            Alert.alert("Éxito", "Correo enviado correctamente. Revisa tu bandeja de entrada.");
-                        } catch (error: any) {
-                            Alert.alert("Error", error.message || "No se pudo enviar el correo.");
-                        }
-                    }
+
+        const runSecurity = async () => {
+            try {
+                await sendPasswordResetEmail(auth, user.email!);
+                if (Platform.OS === "web") {
+                    window.alert("Éxito: Correo enviado correctamente. Revisa tu bandeja de entrada.");
+                } else {
+                    Alert.alert("Éxito", "Correo enviado correctamente. Revisa tu bandeja de entrada.");
                 }
-            ]
-        );
+            } catch (error: any) {
+                if (Platform.OS === "web") {
+                    window.alert("Error: " + (error.message || "No se pudo enviar el correo."));
+                } else {
+                    Alert.alert("Error", error.message || "No se pudo enviar el correo.");
+                }
+            }
+        };
+
+        if (Platform.OS === "web") {
+            const confirmReset = window.confirm(`¿Deseas enviar un correo a ${user.email} con un enlace para restablecer tu contraseña?`);
+            if (confirmReset) runSecurity();
+        } else {
+            Alert.alert(
+                "Restablecer Contraseña",
+                `¿Deseas enviar un correo a ${user.email} con un enlace para restablecer tu contraseña?`,
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { text: "Enviar Correo", style: "destructive", onPress: runSecurity }
+                ]
+            );
+        }
     };
 
     const handleThemePress = () => {
@@ -145,7 +159,11 @@ export default function CuentaScreen() {
             setModalVisible(false);
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "No se pudo guardar la configuración.");
+            if (Platform.OS === "web") {
+                window.alert("Error: No se pudo guardar la configuración.");
+            } else {
+                Alert.alert("Error", "No se pudo guardar la configuración.");
+            }
         } finally {
             setSaving(false);
         }
@@ -153,28 +171,41 @@ export default function CuentaScreen() {
 
     const handleCancelPremium = async () => {
         if (!user?.id) return;
-        
-        const run = async () => {
+
+        const runCancel = async () => {
             try {
                 setSaving(true);
                 await cancelPremium();
-                Alert.alert("Éxito", "Tu plan ha sido cancelado y has vuelto al plan gratuito.");
+                if (Platform.OS === "web") {
+                    window.alert("Éxito: Tu plan ha sido cancelado y has vuelto al plan gratuito.");
+                } else {
+                    Alert.alert("Éxito", "Tu plan ha sido cancelado y has vuelto al plan gratuito.");
+                }
                 setPlanModalVisible(false);
             } catch (error) {
-                Alert.alert("Error", "No se pudo cancelar el plan.");
+                if (Platform.OS === "web") {
+                    window.alert("Error: No se pudo cancelar el plan.");
+                } else {
+                    Alert.alert("Error", "No se pudo cancelar el plan.");
+                }
             } finally {
                 setSaving(false);
             }
         };
 
-        Alert.alert(
-            "Cancelar suscripción",
-            "¿Estás seguro que deseas cancelar tu suscripción premium y volver al plan gratuito?",
-            [
-                { text: "No, mantener", style: "cancel" },
-                { text: "Sí, cancelar", style: "destructive", onPress: run }
-            ]
-        );
+        if (Platform.OS === "web") {
+            const confirmCancel = window.confirm("¿Estás seguro que deseas cancelar tu suscripción premium y volver al plan gratuito?");
+            if (confirmCancel) runCancel();
+        } else {
+            Alert.alert(
+                "Cancelar suscripción",
+                "¿Estás seguro que deseas cancelar tu suscripción premium y volver al plan gratuito?",
+                [
+                    { text: "No, mantener", style: "cancel" },
+                    { text: "Sí, cancelar", style: "destructive", onPress: runCancel }
+                ]
+            );
+        }
     };
 
     const renderOption = (icon: any, title: string, subtitle?: string, onPress?: () => void) => (

@@ -38,12 +38,10 @@ export function OverduePaymentsCard({
 
     return (
         <View style={[styles.card, { flex: 1 }]}>
-            <Text style={styles.title}>Pagos Atrasados ({list.length})</Text>
-
             {list.length === 0 ? (
                 <Text style={styles.empty}>No hay atrasos</Text>
             ) : (
-                <View style={{ marginTop: 10, gap: 10 }}>
+                <View style={{ marginTop: 0, gap: 10 }}>
                     {list.map((inv) => {
                         const c = clientsById.get(inv.clientId);
                         return (
@@ -82,12 +80,10 @@ export function UpcomingPaymentsCard({
 
     return (
         <View style={[styles.card, { flex: 1 }]}>
-            <Text style={styles.title}>Próximos Vencimientos ({list.length})</Text>
-
             {list.length === 0 ? (
                 <Text style={styles.empty}>Nada por vencer</Text>
             ) : (
-                <View style={{ marginTop: 10, gap: 10 }}>
+                <View style={{ marginTop: 0, gap: 10 }}>
                     {list.map((inv) => {
                         const c = clientsById.get(inv.clientId);
                         return (

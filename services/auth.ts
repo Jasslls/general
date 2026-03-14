@@ -9,6 +9,7 @@ export interface BusinessSettings {
     lateFeePercentage: number;
     graceDays: number;
     theme?: 'light' | 'dark' | 'system';
+    viewMode?: 'normal' | 'compact';
 }
 
 export interface UserSession {
@@ -35,6 +36,7 @@ export async function ensureUserDocument(user: UserSession): Promise<void> {
             lateFeePercentage: 0,
             graceDays: 0,
             theme: 'system',
+            viewMode: 'normal',
         };
         await setDoc(userRef, {
             name: user.name,

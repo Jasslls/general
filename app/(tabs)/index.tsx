@@ -1,4 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -218,7 +219,7 @@ export default function DashboardScreen() {
         />
 
 
-        {/* ✅ GRID como Figma: 2 arriba (charts) + 2 abajo (listas) */}
+        {/* GRID como Figma: 2 arriba (charts) + 2 abajo (listas) */}
         <View style={styles.grid}>
           <View style={[styles.cell, colStyle]}>
             <CashFlowBarCard invoices={invoices} />
@@ -229,17 +230,32 @@ export default function DashboardScreen() {
           </View>
 
           <View style={[styles.cell, colStyle]}>
+            <View style={styles.dashboardSectionHeader}>
+              <Text style={styles.dashboardSectionTitle}>Pagos Atrasados</Text>
+              <Pressable onPress={() => router.push("/facturas")}>
+                <Text style={styles.seeAllText}>Ver todas</Text>
+              </Pressable>
+            </View>
             <OverduePaymentsCard invoices={invoices} clientsById={clientById} />
           </View>
 
           <View style={[styles.cell, colStyle]}>
+            <View style={styles.dashboardSectionHeader}>
+              <Text style={styles.dashboardSectionTitle}>Próximos Vencimientos</Text>
+              <Pressable onPress={() => router.push("/facturas")}>
+                <Text style={styles.seeAllText}>Ver todas</Text>
+              </Pressable>
+            </View>
             <UpcomingPaymentsCard invoices={invoices} clientsById={clientById} />
           </View>
         </View>
 
         {/* Recientes */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Facturas recientes</Text>
+        <View style={[styles.dashboardSectionHeader, { marginTop: 24, marginBottom: 12 }]}>
+          <Text style={styles.dashboardSectionTitle}>Facturas recientes</Text>
+          <Pressable onPress={() => router.push("/facturas")}>
+            <Text style={styles.seeAllText}>Ver todas</Text>
+          </Pressable>
         </View>
 
         {recentInvoices.map((inv) => {
@@ -282,8 +298,23 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
   // 1 columna (móvil)
   col1: { flexBasis: "100%", minWidth: 0 },
 
-  sectionHeader: { marginTop: 16, marginBottom: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: "800", color: colors.text },
+  dashboardSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  dashboardSectionTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: colors.text,
+  },
+  seeAllText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: "800",
+  },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
 
   // ── Premium Teaser ──

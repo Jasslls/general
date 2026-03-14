@@ -1,5 +1,6 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     Alert,
@@ -16,35 +17,54 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ClientCard } from "../../components/ClientCard";
 import { ClientFormModal } from "../../components/ClientFormModal";
 import type { Client } from "../../models/types";
+import { useAuth } from "../../context/AuthContext";
+import { usePremium } from "../../hooks/usePremium";
+import { saveSession } from "../../services/auth";
 import {
     addClient,
     deleteClient,
     deleteInvoice,
     getClients,
     getInvoicesByClient,
-    updateClient
+    updateClient,
+    updateUserSettings
 } from "../../services/firestore";
 import { getItemNullable, setItem } from "../../services/storage";
 import { lightColors, useAppColors } from "../../themes/colors";
 import { openWhatsApp } from "../../utils/whatsapp";
-import { useAuth } from "../../context/AuthContext";
+import { PaywallModal } from "../../components/PaywallModal";
 
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
 
 export default function ClientesScreen() {
+    const { status, isPremium } = usePremium();
     const colors = useAppColors();
     const styles = getStyles(colors);
-    const { user } = useAuth();
+    const { user, setUser } = useAuth();
     const uid = user?.id;
 
+    const params = useLocalSearchParams<{ q?: string }>();
     const [q, setQ] = useState("");
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Client | null>(null);
+    const [paywallVisible, setPaywallVisible] = useState(false);
 
     // 🔒 Esto evita que se abra el modal sin intención.
     const [shouldOpenNewFromIntent, setShouldOpenNewFromIntent] = useState(false);
+
+    const viewMode = user?.settings?.viewMode || 'normal';
+
+    const toggleViewMode = async () => {
+        if (!uid || !user) return;
+        const next = viewMode === 'normal' ? 'compact' : 'normal';
+        const newSettings = { ...user.settings!, viewMode: next as any };
+        await updateUserSettings(uid, newSettings);
+        const updatedSession = { ...user, settings: newSettings };
+        await saveSession(updatedSession);
+        setUser(updatedSession);
+    };
 
     const loadClients = async () => {
         if (!uid) return;
@@ -66,6 +86,9 @@ export default function ClientesScreen() {
     // ✅ SOLO si vienes desde "Nueva factura sin clientes"
     useFocusEffect(
         React.useCallback(() => {
+            if (params.q) {
+                setQ(params.q);
+            }
             (async () => {
                 const flag = (await getItemNullable<boolean>(KEY_CLIENTS_INTENT)) ?? false;
                 if (flag) {
@@ -80,7 +103,7 @@ export default function ClientesScreen() {
                     setShouldOpenNewFromIntent(false);
                 }
             })();
-        }, [])
+        }, [params.q])
     );
 
     const filtered = useMemo(() => {
@@ -92,6 +115,10 @@ export default function ClientesScreen() {
     }, [q, clients]);
 
     function openNew() {
+        if (!isPremium && clients.length >= 10) {
+            setPaywallVisible(true);
+            return;
+        }
         setEditing(null);
         setModalOpen(true);
     }
@@ -111,6 +138,11 @@ export default function ClientesScreen() {
             if (editing) {
                 await updateClient(uid, editing.id, input);
             } else {
+                // Double check limit
+                if (!isPremium && clients.length >= 10) {
+                    setPaywallVisible(true);
+                    return;
+                }
                 await addClient(uid, input);
             }
             setModalOpen(false);
@@ -190,10 +222,20 @@ export default function ClientesScreen() {
                         <Text style={styles.sub}>Administra tu lista de clientes</Text>
                     </View>
 
-                    {/* ✅ Este botón sigue funcionando normal */}
-                    <Pressable onPress={openNew} style={({ pressed }) => [styles.newBtn, pressed && { opacity: 0.85 }]}>
-                        <Text style={styles.newBtnText}>＋ Nuevo</Text>
-                    </Pressable>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Pressable onPress={toggleViewMode} style={({ pressed }) => [styles.viewToggle, pressed && { opacity: 0.7 }]}>
+                            <MaterialIcons 
+                                name={viewMode === 'normal' ? "view-agenda" : "view-list"} 
+                                size={22} 
+                                color={colors.primary} 
+                            />
+                        </Pressable>
+
+                        {/* ✅ Este botón sigue funcionando normal */}
+                        <Pressable onPress={openNew} style={({ pressed }) => [styles.newBtn, pressed && { opacity: 0.85 }]}>
+                            <Text style={styles.newBtnText}>＋ Nuevo</Text>
+                        </Pressable>
+                    </View>
                 </View>
 
                 <View style={styles.searchWrap}>
@@ -217,6 +259,7 @@ export default function ClientesScreen() {
                                 phone={c.phone}
                                 rfc={c.rfc}
                                 riskLevel={c.riskLevel}
+                                compact={viewMode === 'compact'}
                                 onEdit={() => openEdit(c)}
                                 onDelete={() => void handleDelete(c)}
                                 onWhatsApp={() => {
@@ -237,6 +280,12 @@ export default function ClientesScreen() {
                             : null
                     }
                 />
+
+                <PaywallModal
+                    visible={paywallVisible}
+                    onClose={() => setPaywallVisible(false)}
+                    onActivated={() => setPaywallVisible(false)}
+                />
             </ScrollView>
         </SafeAreaView>
     );
@@ -252,6 +301,17 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
 
     newBtn: { backgroundColor: "#0B1220", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
     newBtnText: { color: "#fff", fontWeight: "900" },
+
+    viewToggle: {
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center"
+    },
 
     searchWrap: {
         flexDirection: "row",

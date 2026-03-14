@@ -16,9 +16,10 @@ type Props = {
     onDelete?: () => void;
     onWhatsApp?: () => void;
     riskLevel?: string;
+    compact?: boolean;
 };
 
-export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit, onDelete, onWhatsApp }: Props) {
+export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit, onDelete, onWhatsApp, compact }: Props) {
     const colors = useAppColors();
     const styles = getStyles(colors);
     const { isPremium } = usePremium();
@@ -26,11 +27,11 @@ export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit
 
     return (
         <>
-        <View style={styles.card}>
+        <View style={[styles.card, compact && styles.cardCompact]}>
             <View style={styles.topRow}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <View style={styles.iconBox}>
-                        <Text style={styles.iconText}>🏢</Text>
+                    <View style={[styles.iconBox, compact && styles.iconBoxCompact]}>
+                        <Text style={[styles.iconText, compact && { fontSize: 14 }]}>🏢</Text>
                     </View>
                     {riskLevel && ["bajo", "medio", "alto"].includes(riskLevel) && (
                         <Pressable 
@@ -38,15 +39,17 @@ export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit
                             style={[
                                 styles.riskBadge, 
                                 { backgroundColor: riskLevel === "alto" ? colors.danger + "20" : riskLevel === "medio" ? "#F59E0B20" : colors.success + "20" },
-                                !isPremium && { opacity: 0.5 }
+                                !isPremium && { opacity: 0.5 },
+                                compact && { paddingHorizontal: 6, paddingVertical: 2 }
                             ]}
                         >
                             <Text style={[
                                 styles.riskText, 
                                 { color: riskLevel === "alto" ? colors.danger : riskLevel === "medio" ? "#F59E0B" : colors.success },
-                                !isPremium && { opacity: 0.2 } // Blurry effect substitute
+                                !isPremium && { opacity: 0.2 },
+                                compact && { fontSize: 10 }
                             ]}>
-                                {isPremium ? `Riesgo ${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}` : "Riesgo 🔒"}
+                                {isPremium ? (compact ? riskLevel.charAt(0).toUpperCase() : `Riesgo ${riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}`) : "🔒"}
                             </Text>
                         </Pressable>
                     )}
@@ -54,29 +57,33 @@ export function ClientCard({ name, company, email, phone, rfc, riskLevel, onEdit
 
                 <View style={styles.actions}>
                     {onWhatsApp && (
-                        <Pressable onPress={onWhatsApp} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                            <FontAwesome name="whatsapp" size={20} color={colors.success} />
+                        <Pressable onPress={onWhatsApp} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }, compact && { paddingHorizontal: 6 }]}>
+                            <FontAwesome name="whatsapp" size={compact ? 16 : 20} color={colors.success} />
                         </Pressable>
                     )}
-                    <Pressable onPress={onEdit} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                        <Text style={styles.actionText}>✎</Text>
+                    <Pressable onPress={onEdit} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }, compact && { paddingHorizontal: 6 }]}>
+                        <Text style={[styles.actionText, compact && { fontSize: 14 }]}>✎</Text>
                     </Pressable>
-                    <Pressable onPress={onDelete} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                        <Text style={[styles.actionText, { color: colors.danger }]}>🗑</Text>
+                    <Pressable onPress={onDelete} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }, compact && { paddingHorizontal: 6 }]}>
+                        <Text style={[styles.actionText, { color: colors.danger }, compact && { fontSize: 14 }]}>🗑</Text>
                     </Pressable>
                 </View>
             </View>
-            <Text style={styles.name}>{name}</Text>
-            <Text style={styles.company}>{company}</Text>
+            
+            <View style={compact ? { marginTop: 8 } : {}}>
+                <Text style={[styles.name, compact && { marginTop: 0, fontSize: 14 }]} numberOfLines={1}>{name}</Text>
+                <Text style={[styles.company, compact && { fontSize: 12 }]} numberOfLines={1}>{company}</Text>
+            </View>
 
-            <View style={{ height: 10 }} />
-
-            <Text style={styles.line}>✉ {email}</Text>
-            <Text style={styles.line}>📞 {phone}</Text>
-
-            <View style={styles.divider} />
-
-            <Text style={styles.rfc}>RFC: {rfc}</Text>
+            {!compact && (
+                <>
+                    <View style={{ height: 10 }} />
+                    <Text style={styles.line}>✉ {email}</Text>
+                    <Text style={styles.line}>📞 {phone}</Text>
+                    <View style={styles.divider} />
+                    <Text style={styles.rfc}>RFC: {rfc}</Text>
+                </>
+            )}
         </View>
 
         <PaywallModal 
@@ -98,6 +105,10 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
         borderColor: colors.border,
         minHeight: 180,
     },
+    cardCompact: {
+        minHeight: 0,
+        padding: 10,
+    },
     topRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
 
     iconBox: {
@@ -107,6 +118,11 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
         backgroundColor: colors.primary + "1A",
         alignItems: "center",
         justifyContent: "center",
+    },
+    iconBoxCompact: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
     },
     iconText: { fontSize: 18 },
 

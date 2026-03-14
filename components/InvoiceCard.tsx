@@ -24,6 +24,7 @@ export function InvoiceCard({
     onShare,
     onWhatsApp,
     proofUri,
+    compact,
 }: {
     id: string;
     clientName: string;
@@ -37,11 +38,50 @@ export function InvoiceCard({
     onShare?: () => void;
     onWhatsApp?: () => void;
     proofUri?: string; // ✅ Nuevo
+    compact?: boolean;
 }) {
     const colors = useAppColors();
     const styles = getStyles(colors);
     const b = badgeStyle(status, colors);
     const canMarkPaid = status !== "Cobrada";
+
+    if (compact) {
+        return (
+            <View style={[styles.card, styles.cardCompact]}>
+                <View style={styles.compactRow}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[styles.id, { fontSize: 13 }]} numberOfLines={1}>{clientName}</Text>
+                        <Text style={[styles.client, { fontSize: 11 }]} numberOfLines={1}>#{id}</Text>
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                        <Text style={[styles.amount, { fontSize: 14 }]}>{amount}</Text>
+                        <View style={[styles.badge, { backgroundColor: b.bg, paddingVertical: 2, paddingHorizontal: 6, marginTop: 2 }]}>
+                            <Text style={[styles.badgeText, { color: b.fg, fontSize: 10 }]}>{status}</Text>
+                        </View>
+                    </View>
+                </View>
+                <View style={[styles.compactActions, { marginTop: 8 }]}>
+                    <Text style={[styles.due, { flex: 1, fontSize: 11, marginTop: 0 }]}>{dueLabel}</Text>
+                    <View style={{ flexDirection: "row", gap: 6 }}>
+                        {onWhatsApp && (
+                            <Pressable onPress={onWhatsApp} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }, { paddingHorizontal: 6, paddingVertical: 4 }]}>
+                                <MaterialIcons name="notifications-none" size={18} color={colors.primary} />
+                            </Pressable>
+                        )}
+                        <Pressable onPress={onShare} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }, { paddingHorizontal: 6, paddingVertical: 4 }]}>
+                            <Text style={{ fontSize: 14 }}>📤</Text>
+                        </Pressable>
+                        <Pressable onPress={onEdit} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }, { paddingHorizontal: 6, paddingVertical: 4 }]}>
+                            <Text style={{ fontSize: 14 }}>✎</Text>
+                        </Pressable>
+                        <Pressable onPress={onDelete} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }, { paddingHorizontal: 6, paddingVertical: 4 }]}>
+                            <Text style={[{ fontSize: 14, color: colors.danger }]}>🗑</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.card}>
@@ -116,6 +156,23 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
         padding: 14,
         borderWidth: 1,
         borderColor: colors.border,
+    },
+    cardCompact: {
+        padding: 10,
+    },
+    compactRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 8,
+    },
+    compactActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        paddingTop: 8,
     },
     topRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
     actions: { flexDirection: "row", gap: 8 },
