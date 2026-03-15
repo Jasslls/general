@@ -12,17 +12,18 @@ if (!API_KEY) {
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// We use flash-2.5 for extremely fast generation
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+// Use gemini-1.5-flash which is stable and has a generous free tier
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 /** Returns a friendly string if the error is a quota/rate-limit error, null otherwise */
 function getQuotaMessage(error: unknown): string | null {
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate")) {
-        return "Hoy ya se agotó la cuota diaria gratuita de IA. La cuota se renueva cada día a medianoche (hora del Pacífico). Vuelve a intentarlo mañana 😊";
+        return "Hoy ya se agotó la cuota diaria gratuita de IA. La cuota se renueva automáticamente a las 00:00 UTC (revisa en unas horas o mañana). Vuelve a intentarlo pronto 😊";
     }
     return null;
 }
+
 
 export type Tone = "amigable" | "formal" | "urgente";
 
@@ -33,37 +34,48 @@ export interface GeneratedMessages {
     recommended: Tone;
 }
 
-export async function generateCollectionMessages(client: Client, invoice: Invoice): Promise<GeneratedMessages> {
+export async function generateCollectionMessages(
+    client: Client, 
+    invoice: Invoice, 
+    businessName: string = "tu negocio"
+): Promise<GeneratedMessages> {
     if (!API_KEY) {
         throw new Error("No has configurado tu API Key de Gemini en el archivo .env todavía.");
     }
 
     const prompt = `
 Eres un asistente de cobranza financiera experto en la redacción de mensajes de WhatsApp.
-Tu empresa se llama "PagoFijoHN". Siempre asume que escribes en representación de PagoFijoHN.
-NUNCA inventes números de cuenta bancaria ni menciones los métodos de pago disponibles (ej. no digas "puede realizar el pago a la cuenta..." ni nada similar).
+Tu negocio se llama "${businessName}". Siempre asume que escribes en representación de "${businessName}".
+NUNCA inventes números de cuenta bancaria ni menciones los métodos de pago disponibles.
 
 A continuación, tienes los detalles del cliente y de la factura pendiente:
 
 **Cliente:**
 - Nombre: ${client.name}
-- Empresa: ${client.company}
-- Nivel de Riesgo de Impago: ${client.riskLevel} (bajo = paga a tiempo, medio = ocasionalmente tarde, alto = siempre tarde)
+- Empresa: ${client.company || "No especificada"}
+- Nivel de Riesgo de Impago: ${client.riskLevel}
 
 **Factura:**
 - ID: ${invoice.id}
 - Monto a cobrar: ${invoice.amount} USD
 - Fecha Vencimiento: ${invoice.due}
-- Estado Actual: ${invoice.status}
 
-Por favor genera 3 mensajes de cobro distintos para enviar por WhatsApp:
-1. "amigable": Un recordatorio muy suave y amistoso, asumiendo que simplemente se le olvidó.
-2. "formal": Directo al grano pero profesional, indicando los datos de la deuda.
-3. "urgente": Muy serio, advirtiendo del atraso injustificado y solicitando regularización inmediata.
+Por favor genera 3 mensajes de cobro distintos (JSON):
+1. "amigable": Un recordatorio muy suave y amistoso.
+2. "formal": Profesional y directo.
+3. "urgente": Muy serio advirtiendo del atraso.
 
-Y finalmente, dada su clasificación de riesgo (${client.riskLevel}) y el estado de la factura (${invoice.status}), recomienda cuál de los 3 tonos es el más apropiado usar ahora mismo ("amigable", "formal" o "urgente").
+REGLAS PARA LA RECOMENDACIÓN ("recommended"):
+- Prioridad 1 (Urgente): Si la factura ya está vencida (el estado es "Vencida" o ya pasó la fecha de vencimiento).
+- Prioridad 2 (Formal): Si la factura vence hoy, mañana o en los próximos 2 días, O si el monto es grande (> 1000 USD), O si el riesgo del cliente es "alto".
+- Prioridad 3 (Amigable): Si faltan más de 3 días para el vencimiento y el monto no es excesivo.
 
-Devuelve la respuesta ESTRICTAMENTE en este JSON válido (sin markdown, ni \`\`\`json):
+REGLAS CRÍTICAS PARA LOS MENSAJES:
+- TODOS los mensajes deben empezar con un saludo respetuoso hacia el cliente (ej: "Hola ${client.name}", "Estimado ${client.name}").
+- TODOS los mensajes deben identificarte claramente como parte del equipo de "${businessName}" (ej: "te escribimos de ${businessName}", "le saludamos de ${businessName}").
+- Los mensajes deben ser claros sobre el monto (${invoice.amount} USD) y el estado de la factura.
+
+Devuelve la respuesta ESTRICTAMENTE en este JSON válido:
 {
   "amigable": "texto...",
   "formal": "texto...",
@@ -138,7 +150,9 @@ TEMAS EN LOS QUE PUEDES AYUDAR:
 
 REGLAS IMPORTANTES:
 - Responde SIEMPRE en máximo 4 oraciones.
-- NUNCA escribas el texto completo de un mensaje de WhatsApp. Si el usuario pregunta qué mensaje enviar, solo díselo brevemente con palabras (ej: "Te recomiendo enviarle un recordatorio amable") y menciona que puede usar el botón "📲 Notificar" que aparece en la app para redactar y enviar el mensaje profesional.
+- NUNCA escribas propuestas de mensajes o el texto completo de un mensaje de WhatsApp/correo. 
+- Si el usuario pregunta qué mensaje enviar o cómo cobrar, indícale brevemente el tono sugerido y menciona específicamente que debe usar el botón "📲 Notificar" que aparece en la app.
+- No ofrezcas ayuda para redactar el mensaje tú mismo.
 - Si el usuario pregunta por un cliente específico, usa los datos disponibles para responder sobre ese cliente.
 - Si no tienes datos para responder algo, díselo amablemente.
 

@@ -7,6 +7,7 @@ import { useAppColors } from "../themes/colors";
 import { requestNotificationPermissions } from "../services/notifications";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { PremiumProvider } from "../context/PremiumContext";
+import { BusinessOnboardingModal } from "../components/BusinessOnboardingModal";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -33,7 +34,12 @@ function RootLayoutContent() {
     );
   }
 
-  return <RootLayoutNav />;
+  return (
+    <>
+      <RootLayoutNav />
+      <BusinessOnboardingModal />
+    </>
+  );
 }
 
 function RootLayoutNav() {

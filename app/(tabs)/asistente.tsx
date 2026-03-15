@@ -22,10 +22,9 @@ import { useAuth } from "../../context/AuthContext";
 import type { Client, Invoice } from "../../models/types";
 import { getAllInvoices, getClients } from "../../services/firestore";
 import {
-    askFinancialAssistant,
-    type ChatMessage,
-    type FinancialContext,
-} from "../../services/gemini";
+    askAssistant,
+} from "../../services/aiService";
+import type { ChatMessage, FinancialContext } from "../../services/gemini";
 import { getTodayYMD } from "../../services/riskEngine";
 import { lightColors, useAppColors } from "../../themes/colors";
 
@@ -204,7 +203,7 @@ export default function AsistenteScreen() {
         setInput("");
         setLoading(true);
         try {
-            const reply = await askFinancialAssistant(text.trim(), historyForAI, ctx);
+            const reply = await askAssistant(text.trim(), historyForAI, ctx);
 
             // Detect specialized intents
             const actions: ChatAction[] = [];

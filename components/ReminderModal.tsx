@@ -14,11 +14,13 @@ import {
 } from "react-native";
 import * as MailComposer from "expo-mail-composer";
 import type { Client, Invoice } from "../models/types";
-import { generateCollectionMessages, type GeneratedMessages, type Tone } from "../services/gemini";
+import { getCollectionMessages } from "../services/aiService";
+import type { GeneratedMessages, Tone } from "../services/gemini";
 import { lightColors, useAppColors } from "../themes/colors";
 import { openWhatsApp } from "../utils/whatsapp";
 import { usePremium } from "../hooks/usePremium";
 import { PaywallModal } from "./PaywallModal";
+import { useAuth } from "../context/AuthContext";
 
 export function ReminderModal({
     visible,
@@ -38,6 +40,7 @@ export function ReminderModal({
     const colors = useAppColors();
     const styles = getStyles(colors);
     const { isPremium } = usePremium();
+    const { user } = useAuth();
 
 
     const [loading, setLoading] = useState(false);
@@ -79,7 +82,8 @@ export function ReminderModal({
         setIsIAMode(true);
 
         try {
-            const result = await generateCollectionMessages(client, invoice);
+            const businessName = user?.businessName || user?.name || "mi negocio";
+            const result = await getCollectionMessages(client, invoice, businessName);
             setMessages(result);
             setSelectedTone(result.recommended);
             setEditedText(result[result.recommended]);

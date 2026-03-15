@@ -18,6 +18,7 @@ export interface UserSession {
     email: string;
     photo: string | null;
     phone?: string;
+    businessName?: string;
     settings?: BusinessSettings;
 }
 
@@ -50,6 +51,7 @@ export async function ensureUserDocument(user: UserSession): Promise<void> {
         const data = snap.data();
         if (data) {
             if (data.phone) user.phone = data.phone;
+            if (data.businessName) user.businessName = data.businessName;
             if (data.settings) user.settings = data.settings as BusinessSettings;
         }
     }

@@ -55,7 +55,7 @@ export default function CuentaScreen() {
     const [tempValue, setTempValue] = useState("");
 
     // Profile Edit state
-    const [tempProfile, setTempProfile] = useState({ name: "", phone: "" });
+    const [tempProfile, setTempProfile] = useState({ name: "", phone: "", businessName: "" });
 
     // Legal Modal state
     const [legalVisible, setLegalVisible] = useState(false);
@@ -77,7 +77,11 @@ export default function CuentaScreen() {
     const handleEditPress = (key: keyof BusinessSettings | "profile") => {
         setActiveSetting(key);
         if (key === "profile") {
-            setTempProfile({ name: user?.name || "", phone: user?.phone || "" });
+            setTempProfile({ 
+                name: user?.name || "", 
+                phone: user?.phone || "", 
+                businessName: user?.businessName || "" 
+            });
         } else {
             setTempValue(String(settings[key] || ""));
         }
@@ -131,12 +135,29 @@ export default function CuentaScreen() {
         setSaving(true);
         try {
             if (activeSetting === "profile") {
+                if (!tempProfile.businessName.trim()) {
+                    if (Platform.OS === "web") {
+                        window.alert("Error: El nombre del negocio es obligatorio.");
+                    } else {
+                        Alert.alert("Error", "El nombre del negocio es obligatorio.");
+                    }
+                    return;
+                }
                 // Actualizar perfil
                 await updateAuthDisplayName(tempProfile.name);
-                await updateUserProfile(user.id, { name: tempProfile.name, phone: tempProfile.phone });
+                await updateUserProfile(user.id, { 
+                    name: tempProfile.name, 
+                    phone: tempProfile.phone,
+                    businessName: tempProfile.businessName 
+                });
 
                 // Actualizar sesión local
-                const updatedSession = { ...user, name: tempProfile.name, phone: tempProfile.phone };
+                const updatedSession = { 
+                    ...user, 
+                    name: tempProfile.name, 
+                    phone: tempProfile.phone,
+                    businessName: tempProfile.businessName
+                };
                 await saveSession(updatedSession);
                 setUser(updatedSession);
             } else {
@@ -239,6 +260,9 @@ export default function CuentaScreen() {
                         <View>
                             <Text style={styles.greetingText}>{getGreeting()},</Text>
                             <Text style={styles.userName}>{user?.name || "Usuario"}</Text>
+                            {user?.businessName && (
+                                <Text style={styles.businessNameText}>{user.businessName}</Text>
+                            )}
                         </View>
                     </View>
                 </View>
@@ -369,6 +393,15 @@ export default function CuentaScreen() {
                                     value={tempProfile.name}
                                     onChangeText={(t) => setTempProfile({ ...tempProfile, name: t })}
                                     placeholder="Nombre completo"
+                                    placeholderTextColor={colors.muted}
+                                />
+
+                                <Text style={styles.inputLabel}>Nombre del Negocio</Text>
+                                <TextInput
+                                    style={styles.modalInput}
+                                    value={tempProfile.businessName}
+                                    onChangeText={(t) => setTempProfile({ ...tempProfile, businessName: t })}
+                                    placeholder="Tu Negocio S.A."
                                     placeholderTextColor={colors.muted}
                                 />
 
@@ -523,6 +556,7 @@ const getStyles = (c: typeof lightColors) => StyleSheet.create({
     greetingIcon: { fontSize: 32, marginRight: 12 },
     greetingText: { fontSize: 14, color: c.muted, marginBottom: 2 },
     userName: { fontSize: 24, fontWeight: "bold", color: c.text },
+    businessNameText: { fontSize: 14, color: c.primary, fontWeight: "600", marginTop: 2 },
 
     statusCard: {
         flexDirection: "row",

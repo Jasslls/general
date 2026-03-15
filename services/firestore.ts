@@ -27,7 +27,7 @@ export async function updateUserSettings(uid: string, settings: any): Promise<vo
     await updateDoc(ref, { settings });
 }
 
-export async function updateUserProfile(uid: string, data: { name?: string; phone?: string }): Promise<void> {
+export async function updateUserProfile(uid: string, data: { name?: string; phone?: string; businessName?: string }): Promise<void> {
     const ref = userDoc(uid);
     await updateDoc(ref, data);
 }
