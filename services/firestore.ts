@@ -1,4 +1,3 @@
-// services/firestore.ts
 import {
     addDoc,
     collection,
@@ -14,7 +13,6 @@ import {
 import type { Activity, Client, Invoice } from "../models/types";
 import { db } from "./firebase";
 
-// --- Helpers ---
 
 const userDoc = (uid: string) => doc(db, "users", uid);
 const clientsColl = (uid: string) => collection(userDoc(uid), "clients");
@@ -32,7 +30,6 @@ export async function updateUserProfile(uid: string, data: { name?: string; phon
     await updateDoc(ref, data);
 }
 
-// --- Clientes ---
 
 export async function getClients(uid: string): Promise<Client[]> {
     const q = query(clientsColl(uid), orderBy("name", "asc"));
@@ -58,15 +55,7 @@ export async function deleteClient(uid: string, clientId: string): Promise<void>
     await deleteDoc(ref);
 }
 
-// --- Facturas ---
 
-/**
- * Obtiene todas las facturas de un usuario usando Collection Group o iterando clientes.
- * Para cumplir con el requisito de anidación profunda sin Collection Group query global habilitado inicialmente,
- * podemos obtener las facturas por cliente. 
- * Sin embargo, para el Dashboard es mejor tener una lista plana.
- * NOTA: Firestore requiere un índice para Collection Group queries si se filtran/ordenan.
- */
 export async function getAllInvoices(uid: string): Promise<Invoice[]> {
     // Implementación simple: buscar en todos los clientes
     const clients = await getClients(uid);
@@ -107,7 +96,6 @@ export async function deleteInvoice(uid: string, clientId: string, invoiceId: st
     await deleteDoc(ref);
 }
 
-// --- Actividad (Opcional, guardado en user/{uid}/activity) ---
 
 const activityColl = (uid: string) => collection(userDoc(uid), "activity");
 

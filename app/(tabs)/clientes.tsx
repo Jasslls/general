@@ -51,7 +51,6 @@ export default function ClientesScreen() {
     const [editing, setEditing] = useState<Client | null>(null);
     const [paywallVisible, setPaywallVisible] = useState(false);
 
-    // 🔒 Esto evita que se abra el modal sin intención.
     const [shouldOpenNewFromIntent, setShouldOpenNewFromIntent] = useState(false);
 
     const viewMode = user?.settings?.viewMode || 'normal';
@@ -83,7 +82,6 @@ export default function ClientesScreen() {
         loadClients();
     }, [uid]);
 
-    // ✅ SOLO si vienes desde "Nueva factura sin clientes"
     useFocusEffect(
         React.useCallback(() => {
             if (params.q) {
@@ -92,10 +90,8 @@ export default function ClientesScreen() {
             (async () => {
                 const flag = (await getItemNullable<boolean>(KEY_CLIENTS_INTENT)) ?? false;
                 if (flag) {
-                    // IMPORTANTÍSIMO: limpiar el flag primero para que NO pase de nuevo
                     await setItem(KEY_CLIENTS_INTENT, false);
 
-                    // marcamos intención y abrimos modal
                     setShouldOpenNewFromIntent(true);
                     setEditing(null);
                     setModalOpen(true);
@@ -231,7 +227,6 @@ export default function ClientesScreen() {
                             />
                         </Pressable>
 
-                        {/* ✅ Este botón sigue funcionando normal */}
                         <Pressable onPress={openNew} style={({ pressed }) => [styles.newBtn, pressed && { opacity: 0.85 }]}>
                             <Text style={styles.newBtnText}>＋ Nuevo</Text>
                         </Pressable>

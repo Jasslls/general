@@ -15,7 +15,6 @@ function ymdFromDate(d: Date) {
 }
 
 function dateFromYmd(ymd: string) {
-    // ymd "YYYY-MM-DD" -> Date local
     if (!isValidYYYYMMDD(ymd)) return new Date();
     const [y, m, d] = ymd.split("-").map(Number);
     return new Date(y, m - 1, d);
@@ -34,7 +33,7 @@ export function DateField({
     onChange,
 }: {
     label: string;
-    value: string; // "YYYY-MM-DD"
+    value: string;
     onChange: (ymd: string) => void;
 }) {
     const colors = useAppColors();
@@ -45,7 +44,6 @@ export function DateField({
     const displayText = useMemo(() => prettyYmd(value), [value]);
 
     function onPick(e: DateTimePickerEvent, selected?: Date) {
-        // Android dispara "dismissed" si cancelas
         if (Platform.OS === "android") setOpen(false);
         if (e.type === "dismissed") return;
         const dt = selected ?? currentDate;

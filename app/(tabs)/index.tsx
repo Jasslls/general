@@ -68,7 +68,6 @@ export default function DashboardScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const { auth } = require("../../services/firebase");
-      // Importante: No cargar datos hasta que Firebase Auth esté listo y coincida con el UID del contexto
       if (!uid || !auth.currentUser || auth.currentUser.uid !== uid) {
         console.log("Dashboard: Waiting for Firebase Auth sync...", { uid, fbUid: auth.currentUser?.uid });
         return;
@@ -165,7 +164,6 @@ export default function DashboardScreen() {
           <StatCard title="Flujo Proyectado" value={money(kpis.projected)} color={colors.success} />
         </View>
 
-        {/* ── Premium Teaser (only when not premium) ── */}
         {!isPremium && (
           <Pressable
             onPress={() => setPaywallVisible(true)}
@@ -219,7 +217,6 @@ export default function DashboardScreen() {
         />
 
 
-        {/* GRID como Figma: 2 arriba (charts) + 2 abajo (listas) */}
         <View style={styles.grid}>
           <View style={[styles.cell, colStyle]}>
             <CashFlowBarCard invoices={invoices} />
@@ -250,7 +247,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Recientes */}
         <View style={[styles.dashboardSectionHeader, { marginTop: 24, marginBottom: 12 }]}>
           <Text style={styles.dashboardSectionTitle}>Facturas recientes</Text>
           <Pressable onPress={() => router.push("/facturas")}>
@@ -288,14 +284,11 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
 
   kpiRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
 
-  // GRID responsive
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 6 },
   cell: { flexGrow: 1 },
 
-  // 2 columnas (web/tablet grande)
   col2: { flexBasis: "49%", minWidth: 420 },
 
-  // 1 columna (móvil)
   col1: { flexBasis: "100%", minWidth: 0 },
 
   dashboardSectionHeader: {
@@ -317,7 +310,6 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
   },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
 
-  // ── Premium Teaser ──
   premiumCard: {
     backgroundColor: colors.card,
     borderRadius: 16,

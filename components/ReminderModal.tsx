@@ -46,14 +46,12 @@ export function ReminderModal({
     const [loading, setLoading] = useState(false);
     const [messages, setMessages] = useState<GeneratedMessages | null>(null);
     const [selectedTone, setSelectedTone] = useState<Tone>("amigable");
-    // Allow the user to manually edit the AI suggestion before sending
     const [editedText, setEditedText] = useState("");
     const [channel, setChannel] = useState<"whatsapp" | "email">("whatsapp");
     const [isIAMode, setIsIAMode] = useState(false);
 
     useEffect(() => {
         if (!visible || !invoice || !client) {
-            // Reset state when closing
             if (!visible) {
                 setMessages(null);
                 setEditedText("");
@@ -70,12 +68,11 @@ export function ReminderModal({
 
     const fetchMessages = async () => {
         if (!client || !invoice) return;
-        // ── Premium guard ──
         if (!isPremium) {
-            onClose(); // Close this modal first
+        onClose();
             setTimeout(() => {
                 onPremiumRequired?.();
-            }, 300); // Small delay for iOS modal transitions
+            }, 300);
             return;
         }
         setLoading(true);
@@ -94,7 +91,6 @@ export function ReminderModal({
         }
     };
 
-    // Update text box when a different tone is selected
     const handleSelectTone = (tone: Tone) => {
         setSelectedTone(tone);
         if (messages) {
@@ -108,7 +104,6 @@ export function ReminderModal({
         if (channel === "whatsapp") {
             openWhatsApp(client.phone, editedText.trim());
         } else {
-            // Email logic
             const isAvailable = await MailComposer.isAvailableAsync();
             if (isAvailable) {
                 await MailComposer.composeAsync({
@@ -403,7 +398,7 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.border,
         borderRadius: 12,
-        paddingVertical: 8, // Super compact
+        paddingVertical: 8,
         alignItems: "center",
     },
     genericBtnText: { color: colors.text, fontWeight: "800", fontSize: 15 },
@@ -419,7 +414,7 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     },
     saveFull: { 
         flex: 1.2, 
-        backgroundColor: "#22c55e", // WhatsApp green
+        backgroundColor: "#22c55e",
         borderRadius: 12, 
         alignItems: "center", 
         justifyContent: "center",

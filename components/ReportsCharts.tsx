@@ -18,7 +18,6 @@ function daysDiff(due: string) {
     return Math.floor((today.getTime() - d.getTime()) / 86400000);
 }
 
-/* 1️⃣ Antigüedad de saldos */
 export function AgingBarCard({ invoices }: { invoices: Invoice[] }) {
     const colors = useAppColors();
     const styles = getStyles(colors);
@@ -44,7 +43,6 @@ export function AgingBarCard({ invoices }: { invoices: Invoice[] }) {
 
     const max = Math.max(...Object.values(data), 1);
 
-    // ✅ Tipado fuerte para que "value" sea number
     const rows: Array<[label: string, value: number]> = [
         ["Vigente", data.vigente],
         ["1-30 días", data.d30],
@@ -72,7 +70,6 @@ export function AgingBarCard({ invoices }: { invoices: Invoice[] }) {
     );
 }
 
-/* 2️⃣ Top clientes */
 export function TopClientsBarCard({
     invoices,
     clients,
@@ -127,7 +124,6 @@ export function TopClientsBarCard({
     );
 }
 
-/* 3️⃣ Flujo mensual (simple, sin chart lib) */
 export function CashFlowLineCard({ invoices }: { invoices: Invoice[] }) {
     const colors = useAppColors();
     const styles = getStyles(colors);
@@ -137,7 +133,7 @@ export function CashFlowLineCard({ invoices }: { invoices: Invoice[] }) {
     return (
         <View style={styles.card}>
             <Text style={styles.title}>Flujo de Efectivo Mensual</Text>
-            <Text style={styles.hint}>Vista resumida (sin backend aún)</Text>
+            <Text style={styles.hint}>Vista resumida</Text>
 
             <View style={{ marginTop: 10, gap: 6 }}>
                 <Text style={{ color: colors.success, fontWeight: "800" }}>
@@ -151,14 +147,12 @@ export function CashFlowLineCard({ invoices }: { invoices: Invoice[] }) {
     );
 }
 
-/* 4️⃣ KPIs */
 export function ReportsKpis({ invoices }: { invoices: Invoice[] }) {
     const colors = useAppColors();
     const styles = getStyles(colors);
     const paid = sum(invoices.filter((i) => i.status === "Cobrada").map((i) => i.amount));
     const pending = sum(invoices.filter((i) => i.status !== "Cobrada").map((i) => i.amount));
 
-    // promedio simple (placeholder)
     const avg = paid / Math.max(1, 3);
 
     return (
@@ -181,7 +175,6 @@ function Kpi({ title, value, color }: { title: string; value: string; color: str
     );
 }
 
-/* Styles */
 const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     card: {
         backgroundColor: colors.card,

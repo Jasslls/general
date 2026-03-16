@@ -1,4 +1,3 @@
-// services/auth.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { updateProfile } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -24,9 +23,6 @@ export interface UserSession {
 
 const SESSION_KEY = "user_session_v1";
 
-/**
- * Verifica si existe el documento users/{uid}. Si no existe, lo crea.
- */
 export async function ensureUserDocument(user: UserSession): Promise<void> {
     const userRef = doc(db, "users", user.id);
     const snap = await getDoc(userRef);

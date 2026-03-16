@@ -1,9 +1,8 @@
 import type { Client, Invoice } from "../models/types";
 
-const API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || "";
+const API_KEY = (process.env.EXPO_PUBLIC_GROQ_API_KEY || "").trim();
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-// Use llama-3.3-70b-versatile as the current replacement for the decommissioned 3.1 version
 const MODEL = "llama-3.3-70b-versatile"; 
 
 export interface GeneratedMessages {
@@ -110,6 +109,9 @@ export async function askFinancialAssistantGroq(
     history: ChatMessage[],
     context: FinancialContext
 ): Promise<string> {
+    if (!API_KEY) {
+        throw new Error("No has configurado tu API Key de Groq en el archivo .env todavía.");
+    }
     const systemContext = `
 Eres "Fijito", el asistente financiero inteligente de PagoFijoHN.
 Responde en español, máximo 4 oraciones. Sé profesional y amable.

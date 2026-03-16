@@ -20,7 +20,6 @@ function filterByPeriod(invoices: Invoice[], period: ReportPeriod): Invoice[] {
     return invoices.filter((i) => (i.due ?? "") >= start);
 }
 
-/** Tasa de cobro: % de facturas (por monto) que están Cobradas */
 export function getCollectionRate(invoices: Invoice[], period: ReportPeriod = "all"): number {
     const filtered = filterByPeriod(invoices, period);
     if (filtered.length === 0) return 0;
@@ -31,21 +30,18 @@ export function getCollectionRate(invoices: Invoice[], period: ReportPeriod = "a
     return total === 0 ? 0 : Math.round((collected / total) * 100);
 }
 
-/** Monto total cobrado en el período */
 export function getCollectedAmount(invoices: Invoice[], period: ReportPeriod = "all"): number {
     return filterByPeriod(invoices, period)
         .filter((i) => i.status === "Cobrada")
         .reduce((s, i) => s + (i.amount ?? 0), 0);
 }
 
-/** Monto total pendiente/vencido en el período */
 export function getPendingAmount(invoices: Invoice[], period: ReportPeriod = "all"): number {
     return filterByPeriod(invoices, period)
         .filter((i) => i.status !== "Cobrada")
         .reduce((s, i) => s + (i.amount ?? 0), 0);
 }
 
-/** Promedio de días que tarda un cliente en pagar (solo facturas Cobradas) */
 export function getAvgDaysToPay(invoices: Invoice[]): number {
     const paid = invoices.filter((i) => i.status === "Cobrada" && i.due);
     if (paid.length === 0) return 0;
@@ -58,7 +54,6 @@ export function getAvgDaysToPay(invoices: Invoice[]): number {
     return Math.round(daysArr.reduce((a, b) => a + b, 0) / daysArr.length);
 }
 
-/** Top N clientes que MÁS han pagado (monto cobrado total) */
 export function getTopPayers(
     clients: Client[],
     invoices: Invoice[],
@@ -77,7 +72,6 @@ export function getTopPayers(
         .filter((x) => x.client);
 }
 
-/** Top N clientes con MAYOR deuda activa (pendiente + vencida) */
 export function getTopDebtors(
     clients: Client[],
     invoices: Invoice[],
@@ -96,7 +90,6 @@ export function getTopDebtors(
         .filter((x) => x.client);
 }
 
-/** Builds a shareable plain-text summary */
 export function buildShareText(
     period: ReportPeriod,
     collectionRate: number,

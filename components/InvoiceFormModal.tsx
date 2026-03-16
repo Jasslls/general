@@ -24,7 +24,7 @@ type Form = {
     clientId: string;
     desc: string;
     amount: string;
-    due: string; // "YYYY-MM-DD"
+    due: string;
     status: InvoiceStatus;
     recurrence: InvoiceRecurrence;
 };
@@ -91,13 +91,12 @@ export function InvoiceFormModal({
         });
     }, [visible, initial, clients]);
 
-    // Si borraste clientes y quedó apuntando a uno inexistente
     useEffect(() => {
         if (!visible) return;
         if (!clients.length) return;
         const exists = clients.some((c) => c.id === form.clientId);
         if (!exists) setForm((p) => ({ ...p, clientId: clients[0]?.id ?? "" }));
-    }, [clients, visible]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [clients, visible]);
 
     const selectedClient = useMemo(
         () => clients.find((c) => c.id === form.clientId),
@@ -113,7 +112,6 @@ export function InvoiceFormModal({
         setForm((p) => {
             const next = { ...p, [k]: v };
             
-            // Auto Pendiente si la fecha es en el futuro
             if (k === "due") {
                 const today = new Date().toISOString().split("T")[0];
                 if (v > today) {
@@ -126,10 +124,8 @@ export function InvoiceFormModal({
     }
 
     async function goToClientsAndOpenNew() {
-        // ✅ marca “al entrar a clientes abrir modal”
         await setItem(KEY_CLIENTS_INTENT, true);
 
-        // ✅ cierra el modal actual y cambia de pestaña
         onClose();
         router.push("/clientes");
     }

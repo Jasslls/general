@@ -2,9 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import Constants from "expo-constants";
 import type { Client, Invoice } from "../models/types";
 
-// Prefer using an environment variable injected by Expo
-// Provide a fallback for local testing if needed, though putting it in .env is highly recommended.
-const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
+const API_KEY = (process.env.EXPO_PUBLIC_GEMINI_API_KEY || "").trim();
 
 if (!API_KEY) {
     console.warn("EXPO_PUBLIC_GEMINI_API_KEY is missing. Gemini features won't work.");
@@ -12,10 +10,8 @@ if (!API_KEY) {
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// Use gemini-1.5-flash which is stable and has a generous free tier
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-/** Returns a friendly string if the error is a quota/rate-limit error, null otherwise */
 function getQuotaMessage(error: unknown): string | null {
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate")) {
@@ -88,7 +84,6 @@ Devuelve la respuesta ESTRICTAMENTE en este JSON válido:
         const result = await model.generateContent(prompt);
         const text = result.response.text();
         
-        // Clean out possible markdown formatting around the JSON
         const cleanedText = text.replace(/```json/gi, "").replace(/```/gi, "").trim();
         
         const parsed = JSON.parse(cleanedText) as GeneratedMessages;
@@ -197,7 +192,6 @@ ${context.recentPayments.map((p) => `- ${p.client}: $${p.amount.toFixed(2)} el $
     try {
         const result = await model.generateContent({ contents });
         const rawText = result.response.text().trim();
-        // Strip markdown artifacts that Gemini sometimes adds
         const cleanText = rawText
             .replace(/^(---+|===+)\s*/gm, "")
             .replace(/^#+\s*/gm, "")

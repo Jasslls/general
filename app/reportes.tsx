@@ -140,7 +140,6 @@ export default function ReportesScreen() {
                 </View>
             ) : (
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-                    {/* Period selector */}
                     <View style={styles.periodRow}>
                         {PERIODS.map((p) => (
                             <Pressable
@@ -155,7 +154,6 @@ export default function ReportesScreen() {
                         ))}
                     </View>
 
-                    {/* KPI cards */}
                     <View style={styles.kpiGrid}>
                         <View style={[styles.kpiCard, styles.kpiGreen]}>
                             <Text style={styles.kpiLabel}>Total Cobrado</Text>
@@ -175,7 +173,6 @@ export default function ReportesScreen() {
                         </View>
                     </View>
 
-                    {/* Best payers */}
                     {topPayers.length > 0 && (
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>🏆 Mejores Pagadores</Text>
@@ -191,7 +188,6 @@ export default function ReportesScreen() {
                         </View>
                     )}
 
-                    {/* Top debtors */}
                     {topDebtors.length > 0 && (
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>🔴 Mayores Deudores</Text>
@@ -207,7 +203,6 @@ export default function ReportesScreen() {
                         </View>
                     )}
 
-                    {/* Monthly trend chart */}
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>📈 Tendencia Mensual</Text>
                         <CashFlowBarCard invoices={invoices} />
@@ -276,7 +271,6 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     listName: { flex: 1, fontSize: 14, fontWeight: "700", color: colors.text },
     listAmount: { fontSize: 14, fontWeight: "900" },
 
-    // ── Lock Screen ──
     lockContent: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 },
     lockTitle: { fontSize: 22, fontWeight: "900", color: colors.text, textAlign: "center" },
     lockDesc: { fontSize: 14, color: colors.muted, textAlign: "center", fontWeight: "600", lineHeight: 20 },

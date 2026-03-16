@@ -1,4 +1,3 @@
-// app/login.tsx
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useState } from "react";
@@ -29,10 +28,8 @@ import { saveSession } from "../services/auth";
 import { auth, signInWithGoogleToken } from "../services/firebase";
 import { useAuth } from "../context/AuthContext";
 
-// Allows expo-web-browser to complete auth sessions on reload
 WebBrowser.maybeCompleteAuthSession();
 
-// ─── Client IDs  ─────────────────────────────────────────────────────────────
 const IOS_CLIENT_ID =
     "575779505449-48924ju5hjqpocuisj71l4u7crndlelu.apps.googleusercontent.com";
 const ANDROID_CLIENT_ID =
@@ -56,7 +53,6 @@ function getReverseClientId() {
     return `com.googleusercontent.apps.${id}`;
 }
 
-// ─── Google Logo mark ────────────────────────────────────────────────────────
 function GoogleLogo() {
     return (
         <View style={gLogo.wrapper}>
@@ -85,7 +81,6 @@ export default function LoginScreen() {
         }
     };
 
-    // Email/Password States
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");
@@ -128,7 +123,6 @@ export default function LoginScreen() {
         DISCOVERY
     );
 
-    // Handle OAuth response
     useEffect(() => {
         if (response?.type === "success") {
             const code = response.params?.code;
@@ -172,7 +166,6 @@ export default function LoginScreen() {
                 throw new Error("No se recibió id_token de Google.");
             }
 
-            // Sign in to Firebase with the Google ID token
             const userCredential = await signInWithGoogleToken(idToken);
             const fbUser = userCredential.user;
 
@@ -239,7 +232,6 @@ export default function LoginScreen() {
             console.error("Email Auth Error:", e.code, e.message);
             let msg = "Ocurrió un error inesperado.";
 
-            // Firebase Auth Error Codes
             switch (e.code) {
                 case "auth/email-already-in-use":
                     msg = "Este correo electrónico ya está registrado. Intenta iniciar sesión.";

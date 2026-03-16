@@ -1,4 +1,3 @@
-// components/PaywallModal.tsx
 import React, { useState } from "react";
 import {
     ActivityIndicator,
@@ -84,7 +83,6 @@ export function PaywallModal({ visible, onClose, onActivated }: Props) {
                     </View>
                 ) : (
                     <View style={styles.sheet}>
-                        {/* ── Header ── */}
                         <View style={styles.header}>
                             <Pressable onPress={onClose} style={styles.closeBtn}>
                                 <Text style={styles.closeText}>✕</Text>
@@ -100,7 +98,6 @@ export function PaywallModal({ visible, onClose, onActivated }: Props) {
                             contentContainerStyle={styles.body}
                             showsVerticalScrollIndicator={false}
                         >
-                            {/* ── Feature list ── */}
                             <Text style={styles.sectionLabel}>TODO LO QUE DESBLOQUEAS</Text>
                             {FEATURES.map((f, i) => (
                                 <View key={i} style={styles.featureRow}>
@@ -110,7 +107,6 @@ export function PaywallModal({ visible, onClose, onActivated }: Props) {
                                 </View>
                             ))}
 
-                            {/* ── Plan selector ── */}
                             <Text style={[styles.sectionLabel, { marginTop: 20 }]}>ELIGE TU PLAN</Text>
                             <View style={styles.planRow}>
                                 <Pressable
@@ -150,7 +146,6 @@ export function PaywallModal({ visible, onClose, onActivated }: Props) {
                                 </Pressable>
                             </View>
 
-                            {/* ── CTA Buttons ── */}
                             {trialAvailable && (
                                 <Pressable
                                     onPress={handleTrial}
@@ -203,14 +198,13 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
         maxHeight: "92%",
     },
 
-    // Header
     header: {
         paddingTop: 20,
         paddingBottom: 28,
         paddingHorizontal: 24,
         alignItems: "center",
         position: "relative",
-        backgroundColor: "#1e3a8a", // Deep blue
+        backgroundColor: "#1e3a8a",
     },
     closeBtn: {
         position: "absolute",
@@ -238,7 +232,6 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
         marginBottom: 12,
     },
 
-    // Features
     featureRow: {
         flexDirection: "row",
         alignItems: "center",
@@ -251,7 +244,6 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     featureText: { flex: 1, color: colors.text, fontWeight: "600", fontSize: 14 },
     check: { color: "#22c55e", fontWeight: "900", fontSize: 16 },
 
-    // Plans
     planRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
     planCard: {
         flex: 1,
@@ -283,7 +275,6 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     },
     saveBadgeText: { color: "#fff", fontSize: 10, fontWeight: "900" },
 
-    // CTA
     ctaBtn: {
         backgroundColor: colors.primary,
         borderRadius: 14,

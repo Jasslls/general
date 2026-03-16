@@ -1,4 +1,3 @@
-// components/BusinessOnboardingModal.tsx
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -26,7 +25,6 @@ export function BusinessOnboardingModal() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        // Show if user is logged in but missing businessName
         if (user && !user.businessName) {
             setVisible(true);
         } else {
@@ -60,7 +58,7 @@ export function BusinessOnboardingModal() {
             visible={visible}
             transparent
             animationType="fade"
-            onRequestClose={() => { }} // Mandatory
+            onRequestClose={() => { }}
         >
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}

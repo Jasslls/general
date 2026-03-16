@@ -49,18 +49,14 @@ export default function CuentaScreen() {
 
     const [saving, setSaving] = useState(false);
 
-    // Modals state
     const [modalVisible, setModalVisible] = useState(false);
     const [activeSetting, setActiveSetting] = useState<keyof BusinessSettings | "profile" | null>(null);
     const [tempValue, setTempValue] = useState("");
 
-    // Profile Edit state
     const [tempProfile, setTempProfile] = useState({ name: "", phone: "", businessName: "" });
 
-    // Legal Modal state
     const [legalVisible, setLegalVisible] = useState(false);
 
-    // Plan Management state
     const [planModalVisible, setPlanModalVisible] = useState(false);
     const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -143,7 +139,6 @@ export default function CuentaScreen() {
                     }
                     return;
                 }
-                // Actualizar perfil
                 await updateAuthDisplayName(tempProfile.name);
                 await updateUserProfile(user.id, { 
                     name: tempProfile.name, 
@@ -151,7 +146,6 @@ export default function CuentaScreen() {
                     businessName: tempProfile.businessName 
                 });
 
-                // Actualizar sesión local
                 const updatedSession = { 
                     ...user, 
                     name: tempProfile.name, 
@@ -161,7 +155,6 @@ export default function CuentaScreen() {
                 await saveSession(updatedSession);
                 setUser(updatedSession);
             } else {
-                // Actualizar configuraciones de negocio
                 let finalValue: string | number = tempValue;
                 if (activeSetting !== "currency" && activeSetting !== "theme") {
                     finalValue = Number(tempValue) || 0;
@@ -170,7 +163,6 @@ export default function CuentaScreen() {
                 const updatedSettings = { ...settings, [activeSetting]: finalValue };
                 await updateUserSettings(user.id, updatedSettings);
 
-                // Update local state
                 setSettings(updatedSettings);
                 const updatedSession = { ...user, settings: updatedSettings };
                 await saveSession(updatedSession);
@@ -627,7 +619,6 @@ const getStyles = (c: typeof lightColors) => StyleSheet.create({
     },
     logoutBtnText: { fontSize: 13, fontWeight: "bold", color: c.danger },
 
-    // Modal styles
     modalOverlay: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.5)",
@@ -660,7 +651,6 @@ const getStyles = (c: typeof lightColors) => StyleSheet.create({
     modalBtnSave: { backgroundColor: c.primary, padding: 12, borderRadius: 8, minWidth: 80, alignItems: "center" },
     modalBtnSaveText: { color: "#fff", fontWeight: "bold" },
 
-    // Legal Modal styles
     legalModalContainer: { flex: 1, backgroundColor: c.bg },
     legalModalHeader: {
         flexDirection: "row",
@@ -676,7 +666,6 @@ const getStyles = (c: typeof lightColors) => StyleSheet.create({
     legalModalContent: { flex: 1, padding: 20 },
     legalText: { fontSize: 15, color: c.muted, lineHeight: 24 },
 
-    // Plan Management Styles
     planHeader: {
         flexDirection: "row",
         justifyContent: "space-between",

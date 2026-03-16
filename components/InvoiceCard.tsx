@@ -37,7 +37,7 @@ export function InvoiceCard({
     onMarkPaid?: () => void;
     onShare?: () => void;
     onWhatsApp?: () => void;
-    proofUri?: string; // ✅ Nuevo
+    proofUri?: string;
     compact?: boolean;
 }) {
     const colors = useAppColors();

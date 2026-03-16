@@ -21,7 +21,6 @@ export function InvoiceRow({ id, client, amount, status, subtitle }: Props) {
 
     return (
         <View style={styles.row}>
-            {/* ✅ CLAVE: minWidth:0 para que no rompa texto en cascada */}
             <View style={styles.left}>
                 <Text style={styles.id} numberOfLines={1}>
                     {id}
@@ -63,7 +62,6 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
         gap: 12,
     },
 
-    // ✅ anti-cascada
     left: {
         flex: 1,
         minWidth: 0,

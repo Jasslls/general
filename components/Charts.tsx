@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from "react-native";
 import type { Invoice } from "../models/types";
 import { lightColors, useAppColors } from "../themes/colors";
 
-/* ---------------- helpers ---------------- */
 
 function isValidYYYYMMDD(s: string) {
     return /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -25,7 +24,6 @@ function monthLabelEs(d: Date) {
     return `${months[d.getMonth()]}`;
 }
 
-/* ---------------- BAR CARD ---------------- */
 /**
  * “Ingresos Mensuales”
  * - Cobrado: suma de facturas Cobrada del mes (por due)
@@ -37,7 +35,6 @@ export function CashFlowBarCard({ invoices }: { invoices: Invoice[] }) {
     const styles = getStyles(colors);
     const series = useMemo(() => {
         const now = new Date();
-        // últimos 5 meses (4 atrás + actual)
         const months = Array.from({ length: 5 }).map((_, i) => {
             const d = addMonths(new Date(now.getFullYear(), now.getMonth(), 1), i - 4);
             return {
@@ -128,7 +125,6 @@ export function CashFlowBarCard({ invoices }: { invoices: Invoice[] }) {
     );
 }
 
-/* ---------------- PIE (LIST) CARD ---------------- */
 /**
  * “Estado de Facturas”
  * - Pendientes: status "Pendiente"
@@ -194,7 +190,6 @@ export function InvoiceStatusPieCard({ invoices }: { invoices: Invoice[] }) {
     );
 }
 
-/* ---------------- STYLES ---------------- */
 
 const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     card: {
@@ -226,7 +221,6 @@ const getStyles = (colors: typeof lightColors) => StyleSheet.create({
     },
     barItem: { flex: 1, alignItems: "center" },
 
-    // dos barras en “stack” (lado a lado se vería raro en móvil)
     barStack: {
         width: "100%",
         flex: 1,

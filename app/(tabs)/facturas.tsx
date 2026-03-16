@@ -68,7 +68,6 @@ function cmpYmd(a: string, b: string) {
     return a < b ? -1 : 1;
 }
 
-// ✅ Auto: Pendiente -> Vencida si ya pasó la fecha (no toca Cobrada)
 function getNormalizedInvoices(invoices: Invoice[], todayKey: string) {
     return invoices.map((inv) => {
         if (inv.status === "Cobrada") return inv;
@@ -82,7 +81,6 @@ function getNormalizedInvoices(invoices: Invoice[], todayKey: string) {
     });
 }
 
-// ✅ Orden pro (solo UI)
 function sortInvoicesPro(a: Invoice, b: Invoice) {
     const rank = (s: InvoiceStatus) => (s === "Vencida" ? 0 : s === "Pendiente" ? 1 : 2);
 
@@ -115,13 +113,11 @@ export default function FacturasScreen() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Invoice | null>(null);
 
-    // ReminderModal state
     const [reminderModalOpen, setReminderModalOpen] = useState(false);
     const [reminderClient, setReminderClient] = useState<Client | null>(null);
     const [reminderInvoice, setReminderInvoice] = useState<Invoice | null>(null);
     const [paywallVisible, setPaywallVisible] = useState(false);
 
-    // Period Filter State
     const [period, setPeriod] = useState<"Todos" | "Diario" | "Semanal" | "Mensual" | "Anual" | "Personalizado">("Todos");
     const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
     const [periodModalOpen, setPeriodModalOpen] = useState(false);
@@ -207,12 +203,10 @@ export default function FacturasScreen() {
     const filtered = useMemo(() => {
         let list = getNormalizedInvoices(invoices, toDayKeyLocal(new Date()));
 
-        // Status Filter
         if (filter !== "Todos") {
             list = list.filter((inv) => inv.status === filter);
         }
 
-        // Period Filter
         if (periodRange) {
             list = list.filter(inv => {
                 if (!inv.due) return false;
@@ -220,7 +214,6 @@ export default function FacturasScreen() {
             });
         }
 
-        // Search text
         if (q.trim()) {
             const low = q.toLowerCase();
             list = list.filter((inv) => {
@@ -245,7 +238,6 @@ export default function FacturasScreen() {
         return `FAC-2026-${String(next).padStart(3, "0")}`;
     }
 
-    // ✅ Si no hay clientes, NO abrir modal: ir a Clientes y abrir modal allá
     async function openNew() {
         if (!isPremium && invoices.length >= 20) {
             setPaywallVisible(true);

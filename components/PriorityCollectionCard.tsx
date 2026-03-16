@@ -31,7 +31,7 @@ export function PriorityCollectionCard({ items, onSetSearch }: Props) {
                 const today = new Date();
                 const todayMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
                 const dueMonth = (item.invoice.due ?? "").substring(0, 7);
-                const isPastMonth = dueMonth < todayMonth; // month already passed → red
+                const isPastMonth = dueMonth < todayMonth;
                 const dayNum = (item.invoice.due ?? "").split("-")[2] ?? "?";
                 const pillColor = isPastMonth ? colors.danger : colors.success;
 
@@ -40,14 +40,12 @@ export function PriorityCollectionCard({ items, onSetSearch }: Props) {
                         key={item.invoice.id}
                         style={[styles.row, idx !== items.length - 1 && styles.rowBorder]}
                     >
-                        {/* Day-of-month Pill: red = past month, green = current/future */}
                         <View style={[styles.scorePill, { backgroundColor: pillColor + "25" }]}>
                             <Text style={[styles.scoreText, { color: pillColor }]}>
                                 {dayNum}
                             </Text>
                         </View>
 
-                        {/* Info */}
                         <View style={styles.info}>
                             <Text style={styles.clientName} numberOfLines={1}>
                                 {item.client?.name ?? "Cliente"}
@@ -57,14 +55,12 @@ export function PriorityCollectionCard({ items, onSetSearch }: Props) {
                             </Text>
                         </View>
 
-                        {/* Amount + Action */}
                         <View style={styles.right}>
                             <Text style={[styles.amount, { color: isOverdue ? colors.danger : colors.text }]}>
                                 {money(item.invoice.amount ?? 0)}
                             </Text>
                             <Pressable
                                 onPress={() => {
-                                    // Navigate to Facturas tab with pre-filled search
                                     router.push("/facturas");
                                 }}
                                 style={({ pressed }) => [styles.cobrarbtn, pressed && { opacity: 0.75 }]}

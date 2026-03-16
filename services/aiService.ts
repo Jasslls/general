@@ -2,9 +2,6 @@ import { generateCollectionMessages, askFinancialAssistant, type GeneratedMessag
 import { generateCollectionMessagesGroq, askFinancialAssistantGroq } from "./groq";
 import type { Client, Invoice } from "../models/types";
 
-/**
- * Verifica si un error es debido a límites de cuota (429)
- */
 function isQuotaError(error: any): boolean {
     const msg = String(error).toLowerCase();
     return msg.includes("429") || 
@@ -16,9 +13,6 @@ function isQuotaError(error: any): boolean {
            msg.includes("agotó");
 }
 
-/**
- * Genera mensajes de cobranza usando Gemini como primario y Groq como fallback.
- */
 export async function getCollectionMessages(
     client: Client, 
     invoice: Invoice,
@@ -41,9 +35,6 @@ export async function getCollectionMessages(
     }
 }
 
-/**
- * Consulta al asistente financiero usando Gemini como primario y Groq como fallback.
- */
 export async function askAssistant(
     userMessage: string,
     history: ChatMessage[],
@@ -59,7 +50,7 @@ export async function askAssistant(
                 return await askFinancialAssistantGroq(userMessage, history, context);
             } catch (groqError: any) {
                 console.error("Error en Groq (fallback):", groqError);
-                throw new Error(`Fijito está descansando (Límite de Gemini). Además, Groq falló: ${groqError.message}`);
+                throw new Error(`Lo sentimos, el asistente está saturado. (Límite de Gemini alcanzado y Groq falló: ${groqError.message})`);
             }
         }
         throw error;

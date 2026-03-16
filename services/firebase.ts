@@ -1,4 +1,3 @@
-// services/firebase.ts
 import { initializeApp } from "firebase/app";
 import {
     getAuth,
@@ -22,9 +21,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-/**
- * Sign in to Firebase using a Google id_token obtained via expo-auth-session.
- */
 export async function signInWithGoogleToken(idToken: string) {
     const credential = GoogleAuthProvider.credential(idToken);
     return signInWithCredential(auth, credential);
