@@ -25,9 +25,9 @@ export interface FinancialContext {
     collectedAmount: number;
     overdueCount: number;
     pendingCount: number;
-    topDebtors: Array<{ name: string; amount: number; status: string; daysOverdue: number }>;
+    topDebtors: Array<{ name: string; amount: number; originalAmount: number; status: string; daysOverdue: number }>;
     recentPayments: Array<{ client: string; amount: number; date: string }>;
-    upcomingInvoices: Array<{ client: string; amount: number; dueDate: string; daysLeft: number }>;
+    upcomingInvoices: Array<{ client: string; amount: number; originalAmount: number; dueDate: string; daysLeft: number }>;
 }
 
 async function callGroq(messages: any[]) {
@@ -126,7 +126,10 @@ ESTADO FINANCIERO:
 - Cobrado: $${context.collectedAmount.toFixed(2)}, Pendiente: $${context.pendingAmount.toFixed(2)}, Vencido: $${context.overdueAmount.toFixed(2)}
 - Vencidas: ${context.overdueCount}, Pendientes: ${context.pendingCount}
 
-${context.topDebtors.length > 0 ? `DEUDORES: ${context.topDebtors.map(d => `${d.name} ($${d.amount})`).join(", ")}` : ""}
+${context.topDebtors.length > 0 ? `DEUDORES: ${context.topDebtors.map(d => {
+    const abonoText = d.originalAmount > d.amount ? ` (Original: $${d.originalAmount.toFixed(2)}, ya hay abonos)` : "";
+    return `${d.name} ($${d.amount.toFixed(2)} pendiente${abonoText})`;
+}).join(", ")}` : ""}
 `;
 
     const messages = [

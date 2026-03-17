@@ -105,6 +105,13 @@ export async function getActivities(uid: string): Promise<Activity[]> {
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Activity));
 }
 
+export async function getInvoiceActivities(uid: string, invoiceId: string): Promise<Activity[]> {
+    const q = query(activityColl(uid), where("invoiceId", "==", invoiceId));
+    const snap = await getDocs(q);
+    const activities = snap.docs.map(d => ({ id: d.id, ...d.data() } as Activity));
+    return activities.sort((a, b) => b.ts.localeCompare(a.ts));
+}
+
 export async function pushActivity(uid: string, activity: Omit<Activity, "id">): Promise<void> {
     await addDoc(activityColl(uid), activity);
 }

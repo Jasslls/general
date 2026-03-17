@@ -10,12 +10,14 @@ import { usePremium } from "../../hooks/usePremium";
 import { CashFlowBarCard, InvoiceStatusPieCard } from "../../components/Charts";
 import { OverduePaymentsCard, UpcomingPaymentsCard } from "../../components/DashboardLists";
 import { InvoiceRow } from "../../components/InvoiceRow";
+import { InvoiceDetailsModal } from "../../components/InvoiceDetailsModal";
 import { PaywallModal } from "../../components/PaywallModal";
 import { PriorityCollectionCard } from "../../components/PriorityCollectionCard";
 import { StatCard } from "../../components/StatCard";
 import type { Client, Invoice } from "../../models/types";
-import { getAllInvoices, getClients } from "../../services/firestore";
+import { getAllInvoices, getClients, updateInvoice, pushActivity } from "../../services/firestore";
 import { getPriorityRanking } from "../../services/riskEngine";
+import { syncBusinessIntelligence } from "../../services/sync";
 import { lightColors, useAppColors } from "../../themes/colors";
 
 function money(n: number) {
@@ -65,6 +67,29 @@ export default function DashboardScreen() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [detailsInvoice, setDetailsInvoice] = useState<Invoice | null>(null);
+
+  const loadData = async () => {
+    if (!uid) return;
+    try {
+      setLoading(true);
+      const [c, invs] = await Promise.all([
+        getClients(uid),
+        getAllInvoices(uid)
+      ]);
+      const todayKey = toDayKeyLocal(new Date());
+      const normalized = normalizeOverdue(invs, todayKey);
+
+      setClients(c);
+      setInvoices(normalized);
+    } catch (e) {
+      console.error("Dashboard Load Error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       const { auth } = require("../../services/firebase");
@@ -73,31 +98,7 @@ export default function DashboardScreen() {
         return;
       }
 
-      (async () => {
-        setLoading(true);
-        try {
-          console.log("Dashboard: Fetching data for UID:", uid);
-          const [c, invs] = await Promise.all([
-            getClients(uid),
-            getAllInvoices(uid)
-          ]);
-          const todayKey = toDayKeyLocal(new Date());
-          const normalized = normalizeOverdue(invs, todayKey);
-
-          setClients(c);
-          setInvoices(normalized);
-        } catch (error: any) {
-          console.error("Dashboard Load Error:", {
-            message: error.message,
-            code: error.code,
-            uid: uid,
-            fbUid: auth.currentUser?.uid,
-            timestamp: new Date().toISOString()
-          });
-        } finally {
-          setLoading(false);
-        }
-      })();
+      loadData();
     }, [uid])
   );
 
@@ -144,13 +145,41 @@ export default function DashboardScreen() {
       .slice(0, 5);
   }, [invoices]);
 
+  async function handleAbonar(inv: Invoice, amount: number) {
+      if (!uid) return;
+      const paid = (inv.paidAmount || 0) + amount;
+      const newBalance = inv.amount - paid;
+      const newStatus = newBalance <= 0 ? "Cobrada" : inv.status;
+      
+      await updateInvoice(uid, inv.clientId, inv.id, {
+          paidAmount: paid,
+          status: newStatus
+      });
+
+      await pushActivity(uid, {
+          type: "invoice_partial_paid",
+          invoiceId: inv.id,
+          clientId: inv.clientId,
+          amount: amount,
+          status: newStatus,
+          desc: `Abono a ${inv.id}`,
+          ts: new Date().toISOString()
+      });
+
+      await syncBusinessIntelligence(uid);
+      if (detailsInvoice?.id === inv.id) {
+          setDetailsInvoice({ ...inv, paidAmount: paid, status: newStatus });
+      }
+      loadData();
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View>
             <Text style={styles.h1}>PagoFijo</Text>
-            <Text style={styles.sub}>Bienvenido a PagoFijo – administra tus clientes y facturas fácilmente</Text>
+            <Text style={styles.sub}>Bienvenido a PagoFijo</Text>
           </View>
         </View>
 
@@ -207,7 +236,11 @@ export default function DashboardScreen() {
 
         {/* Priority Collection Widget */}
         {priorityItems.length > 0 && (
-          <PriorityCollectionCard items={priorityItems} onSetSearch={() => { }} />
+          <PriorityCollectionCard 
+            items={priorityItems} 
+            onSetSearch={() => { }} 
+            onPressItem={(inv) => { setDetailsInvoice(inv); setDetailsModalOpen(true); }}
+          />
         )}
 
         <PaywallModal
@@ -257,7 +290,7 @@ export default function DashboardScreen() {
         {recentInvoices.map((inv) => {
           const c = clientById.get(inv.clientId);
           const clientName = c?.company ?? c?.name ?? "Cliente";
-          const subtitle = `${inv.desc} • Vence: ${inv.due}`;
+          const subtitle = `${inv.desc} • Vence: ${inv.due}${inv.paidAmount && inv.paidAmount > 0 ? ` • Resta: ${money(inv.amount - inv.paidAmount)}` : ''}`;
           return (
             <InvoiceRow
               key={inv.id}
@@ -266,10 +299,23 @@ export default function DashboardScreen() {
               amount={money(inv.amount || 0)}
               status={inv.status}
               subtitle={subtitle}
+              isRecurring={inv.recurrence !== undefined && inv.recurrence !== "none"}
+              onPress={() => {
+                  setDetailsInvoice(inv);
+                  setDetailsModalOpen(true);
+              }}
             />
           );
         })}
       </ScrollView>
+
+      <InvoiceDetailsModal
+          visible={detailsModalOpen}
+          onClose={() => setDetailsModalOpen(false)}
+          invoice={detailsInvoice}
+          clientName={detailsInvoice ? (clientById.get(detailsInvoice.clientId)?.company || clientById.get(detailsInvoice.clientId)?.name || "Cliente") : ""}
+          onAbonar={handleAbonar}
+      />
     </SafeAreaView>
   );
 }

@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { PriorityInvoice } from "../services/riskEngine";
+import type { Invoice } from "../models/types";
 import { lightColors, useAppColors } from "../themes/colors";
 
 function money(n: number) {
@@ -11,9 +12,10 @@ function money(n: number) {
 interface Props {
     items: PriorityInvoice[];
     onSetSearch: (query: string) => void;
+    onPressItem?: (inv: Invoice) => void;
 }
 
-export function PriorityCollectionCard({ items, onSetSearch }: Props) {
+export function PriorityCollectionCard({ items, onSetSearch, onPressItem }: Props) {
     const colors = useAppColors();
     const styles = getStyles(colors);
 
@@ -36,9 +38,10 @@ export function PriorityCollectionCard({ items, onSetSearch }: Props) {
                 const pillColor = isPastMonth ? colors.danger : colors.success;
 
                 return (
-                    <View
+                    <Pressable
                         key={item.invoice.id}
-                        style={[styles.row, idx !== items.length - 1 && styles.rowBorder]}
+                        onPress={() => onPressItem?.(item.invoice)}
+                        style={({ pressed }) => [styles.row, idx !== items.length - 1 && styles.rowBorder, pressed && { opacity: 0.8 }]}
                     >
                         <View style={[styles.scorePill, { backgroundColor: pillColor + "25" }]}>
                             <Text style={[styles.scoreText, { color: pillColor }]}>
@@ -47,9 +50,14 @@ export function PriorityCollectionCard({ items, onSetSearch }: Props) {
                         </View>
 
                         <View style={styles.info}>
-                            <Text style={styles.clientName} numberOfLines={1}>
-                                {item.client?.name ?? "Cliente"}
-                            </Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                {item.invoice.recurrence && item.invoice.recurrence !== "none" && (
+                                    <Text style={{ fontSize: 12 }}>🔄</Text>
+                                )}
+                                <Text style={styles.clientName} numberOfLines={1}>
+                                    {item.client?.name ?? "Cliente"}
+                                </Text>
+                            </View>
                             <Text style={[styles.badge, { color: isOverdue ? colors.danger : "#F59E0B" }]}>
                                 {item.badge}
                             </Text>
@@ -68,7 +76,7 @@ export function PriorityCollectionCard({ items, onSetSearch }: Props) {
                                 <Text style={styles.cobrarText}>Cobrar</Text>
                             </Pressable>
                         </View>
-                    </View>
+                    </Pressable>
                 );
             })}
         </View>

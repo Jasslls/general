@@ -108,9 +108,9 @@ export interface FinancialContext {
     collectedAmount: number;
     overdueCount: number;
     pendingCount: number;
-    topDebtors: Array<{ name: string; amount: number; status: string; daysOverdue: number }>;
+    topDebtors: Array<{ name: string; amount: number; originalAmount: number; status: string; daysOverdue: number }>;
     recentPayments: Array<{ client: string; amount: number; date: string }>;
-    upcomingInvoices: Array<{ client: string; amount: number; dueDate: string; daysLeft: number }>;
+    upcomingInvoices: Array<{ client: string; amount: number; originalAmount: number; dueDate: string; daysLeft: number }>;
 }
 
 /**
@@ -161,10 +161,16 @@ REGLAS IMPORTANTES:
 - Facturas pendientes activas: ${context.pendingCount}
 
 ${context.topDebtors.length > 0 ? `=== PRINCIPALES DEUDORES ===
-${context.topDebtors.map((d, i) => `${i + 1}. ${d.name}: $${d.amount.toFixed(2)} (${d.status}${d.daysOverdue > 0 ? `, ${Math.round(d.daysOverdue)} días vencida` : ""})`).join("\n")}` : "(No hay deudores activos)"}
+${context.topDebtors.map((d, i) => {
+    const abonoText = d.originalAmount > d.amount ? ` (Original: $${d.originalAmount.toFixed(2)}, ya abonó la diferencia)` : "";
+    return `${i + 1}. ${d.name}: $${d.amount.toFixed(2)} pendiente${abonoText} (${d.status}${d.daysOverdue > 0 ? `, ${Math.round(d.daysOverdue)} días vencida` : ""})`;
+}).join("\n")}` : "(No hay deudores activos)"}
 
 ${context.upcomingInvoices.length > 0 ? `=== PRÓXIMAS A VENCER (30 días) ===
-${context.upcomingInvoices.map((u) => `- ${u.client}: $${u.amount.toFixed(2)}, vence el ${u.dueDate} (en ${u.daysLeft} día${u.daysLeft !== 1 ? "s" : ""})`).join("\n")}` : "(No hay facturas próximas a vencer)"}
+${context.upcomingInvoices.map((u) => {
+    const abonoText = u.originalAmount > u.amount ? ` (Original: $${u.originalAmount.toFixed(2)}, ya hay abonos)` : "";
+    return `- ${u.client}: $${u.amount.toFixed(2)} pendiente${abonoText}, vence el ${u.dueDate} (en ${u.daysLeft} día${u.daysLeft !== 1 ? "s" : ""})`;
+}).join("\n")}` : "(No hay facturas próximas a vencer)"}
 
 ${context.recentPayments.length > 0 ? `=== PAGOS RECIENTES ===
 ${context.recentPayments.map((p) => `- ${p.client}: $${p.amount.toFixed(2)} el ${p.date}`).join("\n")}` : ""}

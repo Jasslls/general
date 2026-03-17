@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
 import { InvoiceCard } from "../../components/InvoiceCard";
+import { InvoiceDetailsModal } from "../../components/InvoiceDetailsModal";
 import { InvoiceFormModal } from "../../components/InvoiceFormModal";
 import { PeriodSelectorModal } from "../../components/PeriodSelectorModal";
 import type { Client, Invoice, InvoiceStatus } from "../../models/types";
@@ -112,6 +113,9 @@ export default function FacturasScreen() {
     const [filter, setFilter] = useState<"Todos" | InvoiceStatus>("Todos");
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Invoice | null>(null);
+
+    const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+    const [detailsInvoice, setDetailsInvoice] = useState<Invoice | null>(null);
 
     const [reminderModalOpen, setReminderModalOpen] = useState(false);
     const [reminderClient, setReminderClient] = useState<Client | null>(null);
@@ -261,11 +265,22 @@ export default function FacturasScreen() {
         if (!uid) return;
         try {
             if (editing?.id) {
+                let newStatus = data.status;
+                const paid = editing.paidAmount || 0;
+                
+                // Logic fix: Re-calculate status if the invoice is edited while having partial payments
+                if (data.amount <= paid) {
+                    newStatus = "Cobrada";
+                } else if (newStatus === "Cobrada" && data.amount > paid) {
+                    const todayKey = toDayKeyLocal(new Date());
+                    newStatus = (data.due && data.due < todayKey) ? "Vencida" : "Pendiente";
+                }
+
                 await updateInvoice(uid, data.clientId, editing.id, {
                     desc: data.desc,
                     amount: data.amount,
                     due: data.due,
-                    status: data.status
+                    status: newStatus
                 });
 
                 await pushActivity(uid, {
@@ -273,7 +288,7 @@ export default function FacturasScreen() {
                     invoiceId: editing.id,
                     clientId: data.clientId,
                     amount: data.amount,
-                    status: data.status,
+                    status: newStatus,
                     desc: data.desc,
                     due: data.due,
                     ts: new Date().toISOString()
@@ -308,6 +323,34 @@ export default function FacturasScreen() {
         } catch (error) {
             Alert.alert("Error", "No se pudo guardar la factura.");
         }
+    }
+
+    async function handleAbonar(inv: Invoice, amount: number) {
+        if (!uid) return;
+        const paid = (inv.paidAmount || 0) + amount;
+        const newBalance = inv.amount - paid;
+        const newStatus = newBalance <= 0 ? "Cobrada" : inv.status;
+        
+        await updateInvoice(uid, inv.clientId, inv.id, {
+            paidAmount: paid,
+            status: newStatus
+        });
+
+        await pushActivity(uid, {
+            type: "invoice_partial_paid",
+            invoiceId: inv.id,
+            clientId: inv.clientId,
+            amount: amount,
+            status: newStatus,
+            desc: `Abono a ${inv.id}`,
+            ts: new Date().toISOString()
+        });
+
+        await syncBusinessIntelligence(uid);
+        if (detailsInvoice?.id === inv.id) {
+            setDetailsInvoice({ ...inv, paidAmount: paid, status: newStatus });
+        }
+        loadAll();
     }
 
     async function markPaid(inv: Invoice) {
@@ -489,6 +532,12 @@ export default function FacturasScreen() {
                                 dueLabel={prettyDue(inv.due)}
                                 status={inv.status}
                                 compact={viewMode === 'compact'}
+                                isRecurring={inv.recurrence !== undefined && inv.recurrence !== "none"}
+                                paidAmount={inv.paidAmount}
+                                onPressCard={() => {
+                                    setDetailsInvoice(inv);
+                                    setDetailsModalOpen(true);
+                                }}
                                 onEdit={() => openEdit(inv)}
                                 onDelete={() => handleDeleteInvoice(inv)}
                                 onMarkPaid={() => markPaid(inv)}
@@ -513,6 +562,14 @@ export default function FacturasScreen() {
                     onSave={saveInvoiceData}
                     clients={clients}
                     initial={editing}
+                />
+
+                <InvoiceDetailsModal
+                    visible={detailsModalOpen}
+                    onClose={() => setDetailsModalOpen(false)}
+                    invoice={detailsInvoice}
+                    clientName={detailsInvoice ? (clientById.get(detailsInvoice.clientId)?.company || clientById.get(detailsInvoice.clientId)?.name || "Cliente") : ""}
+                    onAbonar={handleAbonar}
                 />
 
                 <ReminderModal

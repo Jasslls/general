@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { lightColors, useAppColors } from "../themes/colors";
 
 type Props = {
@@ -7,9 +7,11 @@ type Props = {
     amount: string;
     status: "Vencida" | "Pendiente" | "Cobrada";
     subtitle?: string;
+    isRecurring?: boolean;
+    onPress?: () => void;
 };
 
-export function InvoiceRow({ id, client, amount, status, subtitle }: Props) {
+export function InvoiceRow({ id, client, amount, status, subtitle, isRecurring, onPress }: Props) {
     const colors = useAppColors();
     const styles = getStyles(colors);
     const badgeColor =
@@ -20,11 +22,14 @@ export function InvoiceRow({ id, client, amount, status, subtitle }: Props) {
                 : colors.success;
 
     return (
-        <View style={styles.row}>
+        <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}>
             <View style={styles.left}>
-                <Text style={styles.id} numberOfLines={1}>
-                    {id}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {isRecurring && <Text style={{ fontSize: 12 }}>🔄</Text>}
+                    <Text style={styles.id} numberOfLines={1}>
+                        {id}
+                    </Text>
+                </View>
                 <Text style={styles.client} numberOfLines={1}>
                     {client}
                 </Text>
@@ -45,7 +50,7 @@ export function InvoiceRow({ id, client, amount, status, subtitle }: Props) {
                     </Text>
                 </View>
             </View>
-        </View>
+        </Pressable>
     );
 }
 

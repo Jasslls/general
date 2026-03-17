@@ -21,7 +21,8 @@ export type Invoice = {
     status: InvoiceStatus;
     recurrence?: InvoiceRecurrence;
     lastRecurrenceGeneratedDate?: string;
-    proofUri?: string; // ✅ Nuevo: URI del comprobante de pago
+    proofUri?: string; // URI del comprobante de pago
+    paidAmount?: number; // Monto ya pagado mediante abonos
 };
 
 // ✅ Nuevo: historial de actividad
@@ -29,6 +30,7 @@ export type ActivityType =
     | "invoice_created"
     | "invoice_updated"
     | "invoice_paid"
+    | "invoice_partial_paid"
     | "invoice_deleted";
 
 export type Activity = {

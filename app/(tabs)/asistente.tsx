@@ -39,13 +39,19 @@ function buildContext(clients: Client[], invoices: Invoice[]): FinancialContext 
 
     for (const inv of invoices) {
         const amt = inv.amount ?? 0;
-        if (inv.status === "Cobrada") collectedAmount += amt;
-        else if (inv.status === "Vencida" || (inv.status === "Pendiente" && inv.due < today)) {
-            overdueAmount += amt;
+        const paid = inv.paidAmount ?? 0;
+        const balance = Math.max(0, amt - paid);
+
+        collectedAmount += paid;
+
+        if (inv.status === "Cobrada") {
+            // Ya sumado en collectedAmount
+        } else if (inv.status === "Vencida" || (inv.status === "Pendiente" && inv.due < today)) {
+            overdueAmount += balance;
             overdueCount++;
-            pendingAmount += amt;
+            pendingAmount += balance;
         } else {
-            pendingAmount += amt;
+            pendingAmount += balance;
             pendingCount++;
         }
     }
@@ -53,23 +59,28 @@ function buildContext(clients: Client[], invoices: Invoice[]): FinancialContext 
     const clientMap = new Map<string, Client>(clients.map((c) => [c.id, c]));
     const topDebtors = invoices
         .filter((i) => i.status !== "Cobrada")
-        .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0))
+        .sort((a, b) => {
+            const balA = Math.max(0, (a.amount ?? 0) - (a.paidAmount ?? 0));
+            const balB = Math.max(0, (b.amount ?? 0) - (b.paidAmount ?? 0));
+            return balB - balA;
+        })
         .slice(0, 5)
         .map((inv) => {
             const c = clientMap.get(inv.clientId);
             const daysOverdue = inv.due
                 ? Math.max(0, (new Date(today).getTime() - new Date(inv.due).getTime()) / 86_400_000)
                 : 0;
-            return { name: c?.name ?? "Desconocido", amount: inv.amount ?? 0, status: inv.status, daysOverdue };
+            const balance = Math.max(0, (inv.amount ?? 0) - (inv.paidAmount ?? 0));
+            return { name: c?.name ?? "Desconocido", amount: balance, originalAmount: inv.amount ?? 0, status: inv.status, daysOverdue };
         });
 
     const recentPayments = invoices
-        .filter((i) => i.status === "Cobrada")
+        .filter((i) => i.status === "Cobrada" || (i.paidAmount && i.paidAmount > 0))
         .sort((a, b) => String(b.due).localeCompare(String(a.due)))
         .slice(0, 4)
         .map((inv) => ({
             client: clientMap.get(inv.clientId)?.name ?? "Desconocido",
-            amount: inv.amount ?? 0,
+            amount: inv.paidAmount ?? (inv.amount ?? 0),
             date: inv.due ?? "",
         }));
 
@@ -84,7 +95,8 @@ function buildContext(clients: Client[], invoices: Invoice[]): FinancialContext 
         .map((inv) => {
             const c = clientMap.get(inv.clientId);
             const daysLeft = Math.round((new Date(inv.due!).getTime() - new Date(today).getTime()) / 86_400_000);
-            return { client: c?.name ?? "Desconocido", amount: inv.amount ?? 0, dueDate: inv.due!, daysLeft };
+            const balance = Math.max(0, (inv.amount ?? 0) - (inv.paidAmount ?? 0));
+            return { client: c?.name ?? "Desconocido", amount: balance, originalAmount: inv.amount ?? 0, dueDate: inv.due!, daysLeft };
         });
 
     return {

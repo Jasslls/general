@@ -25,6 +25,9 @@ export function InvoiceCard({
     onWhatsApp,
     proofUri,
     compact,
+    isRecurring,
+    paidAmount,
+    onPressCard,
 }: {
     id: string;
     clientName: string;
@@ -39,6 +42,9 @@ export function InvoiceCard({
     onWhatsApp?: () => void;
     proofUri?: string;
     compact?: boolean;
+    isRecurring?: boolean;
+    paidAmount?: number;
+    onPressCard?: () => void;
 }) {
     const colors = useAppColors();
     const styles = getStyles(colors);
@@ -47,11 +53,14 @@ export function InvoiceCard({
 
     if (compact) {
         return (
-            <View style={[styles.card, styles.cardCompact]}>
+            <Pressable onPress={onPressCard} style={({ pressed }) => [styles.card, styles.cardCompact, pressed && { opacity: 0.9 }]}>
                 <View style={styles.compactRow}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={[styles.id, { fontSize: 13 }]} numberOfLines={1}>{clientName}</Text>
-                        <Text style={[styles.client, { fontSize: 11 }]} numberOfLines={1}>#{id}</Text>
+                    <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        {isRecurring && <MaterialIcons name="event-repeat" size={16} color={colors.primary} />}
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.id, { fontSize: 13 }]} numberOfLines={1}>{clientName}</Text>
+                            <Text style={[styles.client, { fontSize: 11 }]} numberOfLines={1}>#{id}</Text>
+                        </View>
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
                         <Text style={[styles.amount, { fontSize: 14 }]}>{amount}</Text>
@@ -79,15 +88,18 @@ export function InvoiceCard({
                         </Pressable>
                     </View>
                 </View>
-            </View>
+            </Pressable>
         );
     }
 
     return (
-        <View style={styles.card}>
+        <Pressable onPress={onPressCard} style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}>
             <View style={styles.topRow}>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.id} numberOfLines={2}>{clientName}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        {isRecurring && <MaterialIcons name="event-repeat" size={18} color={colors.primary} />}
+                        <Text style={styles.id} numberOfLines={2}>{clientName}</Text>
+                    </View>
                     <Text style={styles.client} numberOfLines={1}>#{id}</Text>
                 </View>
 
@@ -145,7 +157,7 @@ export function InvoiceCard({
                     </View>
                 </View>
             </View>
-        </View>
+        </Pressable>
     );
 }
 

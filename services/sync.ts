@@ -53,7 +53,7 @@ export async function syncBusinessIntelligence(uid: string) {
                         amount: invoice.amount,
                         due: nextDate,
                         status: "Pendiente",
-                        recurrence: invoice.recurrence,
+                        recurrence: "none",
                     });
 
                     lastGen = nextDate;
@@ -64,7 +64,7 @@ export async function syncBusinessIntelligence(uid: string) {
                 if (finalGenDate !== (invoice.lastRecurrenceGeneratedDate || invoice.due)) {
                     await updateInvoice(uid, invoice.clientId, invoice.id, {
                         lastRecurrenceGeneratedDate: finalGenDate,
-                        recurrence: "none"
+                        // Maintain the recurrence flag on the original invoice
                     });
                 }
             }
