@@ -44,7 +44,7 @@ import {
     updateInvoice,
     updateUserSettings
 } from "../../services/firestore";
-import { PaywallModal } from "../../components/PaywallModal";
+
 import { ReminderModal } from "../../components/ReminderModal";
 
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
