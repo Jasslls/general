@@ -6,6 +6,7 @@ import {
     Alert,
     Platform,
     Pressable,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -16,6 +17,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ClientCard } from "../../components/ClientCard";
 import { ClientFormModal } from "../../components/ClientFormModal";
+import { EmptyState } from "../../components/EmptyState";
+import { SkeletonClientList } from "../../components/SkeletonLoader";
+import * as Haptics from "expo-haptics";
 import type { Client } from "../../models/types";
 import { useAuth } from "../../context/AuthContext";
 import { usePremium } from "../../hooks/usePremium";
@@ -141,6 +145,9 @@ export default function ClientesScreen() {
                 }
                 await addClient(uid, input);
             }
+            if (Platform.OS !== "web") {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
+            }
             setModalOpen(false);
             loadClients();
         } catch (error) {
@@ -211,7 +218,18 @@ export default function ClientesScreen() {
 
     return (
         <SafeAreaView style={styles.safe} edges={["top"]}>
-            <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 28 }}>
+            <ScrollView 
+                style={styles.screen} 
+                contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={loading}
+                        onRefresh={loadClients}
+                        colors={[colors.primary]}
+                        tintColor={colors.primary}
+                    />
+                }
+            >
                 <View style={styles.headerRow}>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.h1}>Clientes</Text>
@@ -245,24 +263,44 @@ export default function ClientesScreen() {
                 </View>
 
                 <View style={styles.grid}>
-                    {filtered.map((c) => (
-                        <View key={c.id} style={styles.cell}>
-                            <ClientCard
-                                name={c.name}
-                                company={c.company}
-                                email={c.email}
-                                phone={c.phone}
-                                rfc={c.rfc}
-                                riskLevel={c.riskLevel}
-                                compact={viewMode === 'compact'}
-                                onEdit={() => openEdit(c)}
-                                onDelete={() => void handleDelete(c)}
-                                onWhatsApp={() => {
-                                    openWhatsApp(c.phone, `Hola ${c.name}, le escribimos de PagoFijoHN...`);
-                                }}
-                            />
-                        </View>
-                    ))}
+                    {loading && clients.length === 0 ? (
+                        <SkeletonClientList />
+                    ) : filtered.length === 0 && !loading ? (
+                        <EmptyState 
+                            icon="people-outline"
+                            title="No hay clientes"
+                            description={
+                                q.trim() !== "" 
+                                    ? "No se encontraron clientes con esta búsqueda."
+                                    : "Aún no tienes clientes. Crea uno nuevo para empezar a gestionar tus cobros."
+                            }
+                        />
+                    ) : (
+                        filtered.map((c) => (
+                            <View key={c.id} style={styles.cell}>
+                                <ClientCard
+                                    name={c.name}
+                                    company={c.company}
+                                    email={c.email}
+                                    phone={c.phone}
+                                    rfc={c.rfc}
+                                    riskLevel={c.riskLevel}
+                                    compact={viewMode === 'compact'}
+                                    onEdit={() => openEdit(c)}
+                                    onDelete={() => handleDelete(c)}
+                                    onWhatsApp={
+                                        c.phone
+                                            ? () =>
+                                                openWhatsApp(
+                                                    c.phone,
+                                                    `Hola ${c.name},\n\nTe escribo de ${user?.businessName || user?.name || "mi negocio"}.`
+                                                )
+                                            : undefined
+                                    }
+                                />
+                            </View>
+                        ))
+                    )}
                 </View>
 
                 <ClientFormModal

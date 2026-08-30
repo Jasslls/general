@@ -60,8 +60,8 @@ export async function updateAuthDisplayName(name: string): Promise<void> {
 }
 
 export async function saveSession(user: UserSession): Promise<void> {
-    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(user));
     await ensureUserDocument(user);
+    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(user));
 }
 
 export async function getSession(): Promise<UserSession | null> {

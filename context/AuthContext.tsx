@@ -73,6 +73,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     };
                     await saveSession(newSession);
                     setUser(newSession);
+                } else {
+                    // Update session with latest from Firestore to repair any missing data
+                    await saveSession(session);
+                    setUser({ ...session });
                 }
             }
 

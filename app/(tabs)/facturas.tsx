@@ -3,9 +3,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState, useCallback } from "react";
 import {
+    ActivityIndicator,
     Alert,
     Platform,
     Pressable,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -14,11 +16,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import * as Haptics from "expo-haptics";
 
 import { InvoiceCard } from "../../components/InvoiceCard";
 import { InvoiceDetailsModal } from "../../components/InvoiceDetailsModal";
 import { InvoiceFormModal } from "../../components/InvoiceFormModal";
+import { PaywallModal } from "../../components/PaywallModal";
 import { PeriodSelectorModal } from "../../components/PeriodSelectorModal";
+import { EmptyState } from "../../components/EmptyState";
+import { SkeletonInvoiceList } from "../../components/SkeletonLoader";
 import type { Client, Invoice, InvoiceStatus } from "../../models/types";
 import { generateInvoicePDF } from "../../services/pdf";
 import { setItem } from "../../services/storage";
@@ -43,7 +49,11 @@ import { ReminderModal } from "../../components/ReminderModal";
 
 const KEY_CLIENTS_INTENT = "clients_intent_open_new_v1";
 
-function money(n: number) {
+function money(n: number | undefined | null) {
+    if (n == null || isNaN(n)) return "$0";
+    if (n % 1 === 0) {
+        return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 });
+    }
     return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
@@ -388,6 +398,9 @@ export default function FacturasScreen() {
             }
             
             // Background sync
+            if (Platform.OS !== "web") {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
+            }
             syncBusinessIntelligence(uid).catch((err) => console.error("Background sync failed:", err));
         } catch (error) {
             console.error("Error saving invoice:", error);
@@ -425,7 +438,11 @@ export default function FacturasScreen() {
                 ts: new Date().toISOString(),
             });
 
+            if (Platform.OS !== "web") {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(()=>{});
+            }
             syncBusinessIntelligence(uid).catch((err) => console.error("Background sync failed:", err));
+            await loadAll();
         } catch (error) {
             console.error("Error registering abono:", error);
             loadAll();
@@ -480,7 +497,11 @@ export default function FacturasScreen() {
                     proofUri: uploadedUri,
                 });
 
+                if (Platform.OS !== "web") {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
+                }
                 syncBusinessIntelligence(uid).catch((err) => console.error("Background sync failed:", err));
+                await loadAll();
             } catch (error) {
                 console.error("Error markPaid:", error);
                 loadAll();
@@ -545,6 +566,9 @@ export default function FacturasScreen() {
                     due: inv.due,
                     ts: new Date().toISOString(),
                 });
+                if (Platform.OS !== "web") {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(()=>{});
+                }
                 syncBusinessIntelligence(uid).catch((err) => console.error("Background sync failed:", err));
             } catch (error) {
                 console.error("Error deleteInvoice:", error);
@@ -570,7 +594,18 @@ export default function FacturasScreen() {
 
     return (
         <SafeAreaView style={styles.safe} edges={["top"]}>
-            <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 28 }}>
+            <ScrollView 
+                style={styles.screen} 
+                contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={loading}
+                        onRefresh={loadAll}
+                        colors={[colors.primary]}
+                        tintColor={colors.primary}
+                    />
+                }
+            >
                 <View style={styles.headerRow}>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.h1}>Facturas</Text>
@@ -650,52 +685,66 @@ export default function FacturasScreen() {
                 <View style={{ height: 12 }} />
 
                 <View style={{ gap: 12 }}>
-                    {filtered.map((inv) => {
-                        const c = clientById.get(inv.clientId);
-                        const isGeneral = !inv.clientId || inv.clientId === "__general__" || !c;
-                        const clientDisplayName = c 
-                            ? (c.company ? `${c.company} - ${c.name}` : c.name) 
-                            : "Cobro General";
+                    {loading && invoices.length === 0 ? (
+                        <SkeletonInvoiceList />
+                    ) : filtered.length === 0 && !loading ? (
+                        <EmptyState 
+                            icon="document-text-outline"
+                            title="No hay facturas"
+                            description={
+                                filter !== "Todos" || q.trim() !== "" || period !== "Todos"
+                                    ? "No se encontraron facturas con los filtros actuales."
+                                    : "Aún no tienes facturas registradas. Crea una nueva para empezar a cobrar."
+                            }
+                        />
+                    ) : (
+                        filtered.map((inv) => {
+                            const c = clientById.get(inv.clientId);
+                            const isGeneral = !inv.clientId || inv.clientId === "__general__" || !c;
+                            const clientDisplayName = c 
+                                ? (c.company ? `${c.company} - ${c.name}` : c.name) 
+                                : "Cobro General";
 
-                        return (
-                            <InvoiceCard
-                                key={inv.id}
-                                id={inv.id}
-                                clientName={clientDisplayName}
-                                desc={inv.desc}
-                                amount={money(inv.amount)}
-                                dueLabel={prettyDue(inv.due)}
-                                status={inv.status}
-                                compact={viewMode === 'compact'}
-                                isRecurring={inv.recurrence !== undefined && inv.recurrence !== "none"}
-                                paidAmount={inv.paidAmount}
-                                onPressCard={() => {
-                                    setDetailsInvoice(inv);
-                                    setDetailsModalOpen(true);
-                                }}
-                                onEdit={() => openEdit(inv)}
-                                onDelete={() => handleDeleteInvoice(inv)}
-                                onMarkPaid={() => markPaid(inv)}
-                                proofUri={inv.proofUri}
-                                onShare={() => {
-                                    const clientData = c || {
-                                        id: "__general__",
-                                        name: "Cliente General",
-                                        company: "Cobro General",
-                                        email: "",
-                                        phone: "",
-                                        rfc: "",
-                                    };
-                                    generateInvoicePDF(inv, clientData);
-                                }}
-                                onWhatsApp={c?.phone ? () => {
-                                    setReminderClient(c);
-                                    setReminderInvoice(inv);
-                                    setReminderModalOpen(true);
-                                } : undefined}
-                            />
-                        );
-                    })}
+                            return (
+                                <InvoiceCard
+                                    key={inv.id}
+                                    id={inv.id}
+                                    clientName={clientDisplayName}
+                                    desc={inv.desc}
+                                    amount={money(inv.amount)}
+                                    dueLabel={prettyDue(inv.due)}
+                                    status={inv.status}
+                                    compact={viewMode === 'compact'}
+                                    isRecurring={inv.recurrence !== undefined && inv.recurrence !== "none"}
+                                    paidAmount={inv.paidAmount}
+                                    onPressCard={() => {
+                                        setDetailsInvoice(inv);
+                                        setDetailsModalOpen(true);
+                                    }}
+                                    onEdit={() => openEdit(inv)}
+                                    onDelete={() => handleDeleteInvoice(inv)}
+                                    onMarkPaid={() => markPaid(inv)}
+                                    proofUri={inv.proofUri}
+                                    onShare={() => {
+                                        const clientData = c || {
+                                            id: "__general__",
+                                            name: "Cliente General",
+                                            company: "Cobro General",
+                                            email: "",
+                                            phone: "",
+                                            rfc: "",
+                                        };
+                                        generateInvoicePDF(inv, clientData);
+                                    }}
+                                    onWhatsApp={c?.phone ? () => {
+                                        setReminderClient(c);
+                                        setReminderInvoice(inv);
+                                        setReminderModalOpen(true);
+                                    } : undefined}
+                                />
+                            );
+                        })
+                    )}
                 </View>
 
                 <InvoiceFormModal

@@ -1,8 +1,9 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 
 import { useAuth } from "../../context/AuthContext";
 import { usePremium } from "../../hooks/usePremium";
@@ -20,7 +21,11 @@ import { getPriorityRanking } from "../../services/riskEngine";
 import { syncBusinessIntelligence } from "../../services/sync";
 import { lightColors, useAppColors } from "../../themes/colors";
 
-function money(n: number) {
+function money(n: number | undefined | null) {
+  if (n == null || isNaN(n)) return "$0";
+  if (n % 1 === 0) {
+      return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 });
+  }
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
@@ -174,7 +179,11 @@ export default function DashboardScreen() {
               ts: new Date().toISOString(),
           });
 
+          if (Platform.OS !== "web") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(()=>{});
+          }
           syncBusinessIntelligence(uid).catch((err) => console.error("Background sync failed:", err));
+          await loadData();
       } catch (err) {
           console.error("Dashboard abono error:", err);
           loadData();
@@ -183,7 +192,18 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScrollView 
+          style={styles.screen} 
+          contentContainerStyle={styles.content}
+          refreshControl={
+              <RefreshControl
+                  refreshing={loading}
+                  onRefresh={loadData}
+                  colors={[colors.primary]}
+                  tintColor={colors.primary}
+              />
+          }
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.h1}>PagoFijo</Text>
